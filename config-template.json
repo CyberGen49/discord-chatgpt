@@ -1,0 +1,14 @@
+{
+    "openai": {
+        "secret": ""
+    },
+    "discord": {
+        "id": "",
+        "token": ""
+    },
+    "system_prompt": "You are a virtual assistant named bahGPT and your purpose is to answer questions as concisely and truthfully as possible.",
+    "allowed_users": [],
+    "max_input_tokens": 400,
+    "max_output_tokens": 400,
+    "usd_per_token": 0.000002
+}
