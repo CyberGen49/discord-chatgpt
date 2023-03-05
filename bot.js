@@ -38,7 +38,10 @@ bot.once('ready', () => {
     bot.user.setActivity('our DMs', { type: Discord.ActivityType.Watching });
 });
 const userIsGenerating = {};
+const channelLastActive = {};
 bot.on('messageCreate', async msg => {
+    const now = Date.now();
+    channelLastActive[msg.channel.id] = now;
     if (msg.author.bot) return;
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
     if (config.allowed_users.length > 0 && !config.allowed_users.includes(msg.author.id)) {
@@ -75,11 +78,16 @@ bot.on('messageCreate', async msg => {
     let typingInterval = setInterval(sendTyping, 3000);
     try {
         const messages = [{ role: 'user', content: input }];
-        if (!msg.guild) {
+        if (msg.type == Discord.MessageType.Reply) {
+            const lastMsg = msg.channel.messages.cache.get(msg.reference.messageId).content;
+            messages.unshift({ role: 'user', content: lastMsg });
+            console.log(`Using replied-to message as context`);
+        } else if (!msg.guild) {
             const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
             if (lastMsg) {
                 messages.unshift({ role: 'assistant', content: lastMsg.output });
                 messages.unshift({ role: 'user', content: lastMsg.input });
+                console.log(`Using previous input and output as context`);
             }
         }
         const gpt = await getChatResponse(messages);
@@ -90,7 +98,7 @@ bot.on('messageCreate', async msg => {
         db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, message_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
         db.close();
         clearInterval(typingInterval);
-        if (msg.guild) {
+        if (now !== channelLastActive[msg.channel.id]) {
             await msg.reply({
                 content: gpt.reply
             });

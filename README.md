@@ -3,9 +3,9 @@
 A Discord bot that allows users to interact with OpenAI's `gpt-3.5-turbo` large language model, which is the same one used for ChatGPT.
 
 ## Using the bot
-You can have a conversation with the bot by sending it a DM. Since you're required to send any part of a conversation that you want the model to "remember" with every request, it's only effective to resend just the previous interaction (prompt and response) with each message.
+You can have a conversation with the bot by sending it a DM or pinging it in a server with a message. Since you're required to resend any part of a conversation that you want the model to "remember", it's only effective to resend just the previous interaction (prompt and response) with each message, which is only done in DMs.
 
-You can also ping the bot in a server with a prompt, but no conversation history will be available.
+You can also reply to any message in the channel, DM or server, and ping the bot with another message to use the original one as context.
 
 ## Running the bot yourself
 * Download and install Node.js from [here](https://nodejs.org/en/download/) if you don't have it
