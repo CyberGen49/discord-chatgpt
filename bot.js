@@ -35,7 +35,7 @@ const bot = new Discord.Client({
 
 bot.once('ready', () => {
     console.log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
-    bot.user.setActivity('our DMs', { type: Discord.ActivityType.Watching });
+    bot.user.setActivity('your questions', { type: Discord.ActivityType.Listening });
 });
 const userIsGenerating = {};
 const channelLastActive = {};
@@ -79,9 +79,10 @@ bot.on('messageCreate', async msg => {
     try {
         const messages = [{ role: 'user', content: input }];
         if (msg.type == Discord.MessageType.Reply) {
-            const lastMsg = msg.channel.messages.cache.get(msg.reference.messageId).content;
-            messages.unshift({ role: 'user', content: lastMsg });
-            console.log(`Using replied-to message as context`);
+            const lastMsg = msg.channel.messages.cache.get(msg.reference.messageId);
+            const msgType = (lastMsg.user.id == bot.user.id) ? 'assistant' : 'user'
+            messages.unshift({ role: msgType, content: lastMsg.content });
+            console.log(`Using replied-to ${msgType} message as context`);
         } else if (!msg.guild) {
             const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
             if (lastMsg) {
