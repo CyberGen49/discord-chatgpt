@@ -24,8 +24,20 @@ You can also ping the bot in a server with a prompt, but no conversation history
     * Check "Bot", then copy the generated URL
     * Open a new tab, paste the URL, and navigate to it
     * Follow the instructions to add the bot to your server
-* Make any other changes to the config file, then save it
+* Make any other changes to the config file ([see below](#configuration)), then save it
 * Create the message database by running `sqlite3 main.db ".read schema.sql"`
 * Register the bot's slash commands by running `node registerCommands.js`
 * Start the bot with `node bot.js`
     * If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes
+
+## Configuration
+* `openai`
+    * `secret`: Your OpenAI secret key
+* `discord`
+    * `id`: Your Discord application's ID
+    * `token`: Your Discord bot's token
+* `system_prompt`: The initial `system` message to send with all requests to the language model
+* `allowed_users`: An array of Discord user IDs who are allowed to use the bot. If this array is empty, all users are allowed to use the bot.
+* `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
+* `max_output_tokens`: The max size of the language model's responses in text tokens
+* `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.
