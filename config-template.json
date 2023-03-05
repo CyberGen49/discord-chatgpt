@@ -6,7 +6,7 @@
         "id": "",
         "token": ""
     },
-    "system_prompt": "You are a virtual assistant named bahGPT and your purpose is to answer questions as concisely and truthfully as possible.",
+    "system_prompt": "You are a virtual assistant named bahGPT. You share a casual relationship with the user, so you should speak informally.",
     "allowed_users": [],
     "max_input_tokens": 400,
     "max_output_tokens": 400,
