@@ -52,7 +52,16 @@ bot.on('messageCreate', async msg => {
         });
     }
     const input = msg.content.split(' ').filter(segment => !segment.match(/<(@|#)(\d+)>/)).join(' ').trim();
-    if (!input) return;
+    if (!input) {
+        const defaults = [
+            `Hi! How can I assist you today?`,
+            `Hello! How can I help you?`,
+            `Hello! Is there something specific you need help with or a question you have?`
+        ];
+        return await msg.channel.send({
+            content: defaults[Math.floor(Math.random() * defaults.length)]
+        });
+    }
     if (countTokens(input) > config.max_input_tokens) {
         return await msg.channel.send({
             content: `${msg.author.username}, that message is too long for me to handle! Can you make it shorter?`
