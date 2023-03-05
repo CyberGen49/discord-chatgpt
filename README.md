@@ -54,3 +54,5 @@ The database contains a single table, `messages`, whose columns are as follows:
 * `input`: The user's input
 * `output`: The language model's response
 * `count_tokens`: The total number of text tokens that this interaction used
+
+This data is only used for conversation history and the statistics shown in the `/stats` command, so the database can be safely deleted and regenerated at any time. 
