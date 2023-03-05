@@ -8,13 +8,13 @@ You can have a conversation with the bot by sending it a DM or pinging it in a s
 You can also reply to any message in the channel, DM or server, and ping the bot with another message to use the original one as context.
 
 ## Running the bot yourself
-1. Download and install Node.js from [here](https://nodejs.org/en/download/) if you don't have it
-1. Download and install SQLite from [here](https://www.sqlite.org/download.html/) if you don't have it
+1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
+1. [Download and install SQLite](https://www.sqlite.org/download.html/) if you don't have it
 1. Clone (or download and unzip) the repository and `cd` into it with your terminal
 1. Run `npm install`
 1. Rename `config-template.json` to `config.json` and open it
-1. Generate an OpenAI secret key [here](https://platform.openai.com/account/api-keys) and paste it in the `openai.secret` config field
-1. Create a new Discord application [here](https://discord.com/developers/applications)
+1. [Generate an OpenAI secret key](https://platform.openai.com/account/api-keys) and paste it in the `openai.secret` config field
+1. [Create a new Discord application](https://discord.com/developers/applications)
     1. Set its name, description, and picture
     1. Copy the Application ID and paste it in the `discord.id` config field
     1. Go to the "Bot" tab and create a new bot
