@@ -41,3 +41,16 @@ You can also ping the bot in a server with a prompt, but no conversation history
 * `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
 * `max_output_tokens`: The max size of the language model's responses in text tokens
 * `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.
+
+## Database
+This bot stores every message sent to OpenAI, as well as its response, in the database generated during setup.
+
+The database contains a single table, `messages`, whose columns are as follows:
+
+* `time_created`: The timestamp of the interaction
+* `user_id`: The ID of the user who sent the message
+* `channel_id`: The ID of the channel the message was sent in
+* `message_id`: The ID of the user's message
+* `input`: The user's input
+* `output`: The language model's response
+* `count_tokens`: The total number of text tokens that this interaction used
