@@ -1,10 +1,18 @@
 
+const fs = require('fs');
 const sqlite3 = require('better-sqlite3');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
 const Discord = require('discord.js');
 const config = require('./config.json');
 
+const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
+    messages: 0,
+    tokens: 0,
+    users: {}
+};
+
+const writeStats = () => fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
 const countTokens = text => tokens.encode(text).length;
 const getChatResponse = async(messages = []) => {
     messages.unshift({ role: 'system', content: config.system_prompt });
@@ -79,10 +87,20 @@ bot.on('messageCreate', async msg => {
     try {
         const messages = [{ role: 'user', content: input }];
         if (msg.type == Discord.MessageType.Reply) {
-            const lastMsg = msg.channel.messages.cache.get(msg.reference.messageId);
-            const msgType = (lastMsg.user.id == bot.user.id) ? 'assistant' : 'user'
-            messages.unshift({ role: msgType, content: lastMsg.content });
-            console.log(`Using replied-to ${msgType} message as context`);
+            const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
+            const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
+            messages.unshift({ role: msgType, content: srcMsg.content });
+            if (msgType == 'assistant') {
+                const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
+                if (lastMsg) {
+                    messages.unshift({ role: 'user', content: lastMsg.input });
+                    console.log(`Using replied-to saved input and output as context`);
+                } else {
+                    console.log(`Using replied-to user message as context (couldn't find saved message)`);
+                }
+            } else {
+                console.log(`Using replied-to user message as context`);
+            }
         } else if (!msg.guild) {
             const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
             if (lastMsg) {
@@ -96,22 +114,35 @@ bot.on('messageCreate', async msg => {
             .replace(/([@])/g, '\\$1')
             .replace(/```\n\n/g, '```')
             .replace(/\n\n```/g, '\n```');
-        db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, message_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
-        db.close();
+        db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
+        stats.totalInteractions++;
+        stats.totalTokens += gpt.count_tokens;
+        stats.users[msg.author.id] = stats.users[msg.author.id] || {
+            interactions: 0,
+            tokens: 0
+        };
+        stats.users[msg.author.id].interactions++;
+        stats.users[msg.author.id].tokens += gpt.count_tokens;
+        writeStats();
         clearInterval(typingInterval);
+        let outputMsg;
         if (now !== channelLastActive[msg.channel.id]) {
-            await msg.reply({
+            outputMsg = await msg.reply({
                 content: gpt.reply
             });
         } else {
-            await msg.channel.send({
+            outputMsg = await msg.channel.send({
                 content: gpt.reply
             });
         }
+        if (outputMsg && outputMsg.id) {
+            db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
+        }
     } catch (error) {
-        console.error(`Failed to send message: ${error}`);
+        console.error(`Failed to send message`, error);
         clearInterval(typingInterval);
     }
+    db.close();
     userIsGenerating[msg.author.id] = false;
 });
 
@@ -122,26 +153,13 @@ bot.on('messageCreate', async msg => {
 const commands = {
     /** @type {CommandHandler} */
     stats: async(interaction) => {
-        await interaction.deferReply({ ephemeral: true });
-        const db = sqlite3('./main.db');
-        const messages = db.prepare(`SELECT user_id, count_tokens FROM messages`).all();
-        let totalInteractions = 0;
-        let totalTokens = 0;
-        let myInteractions = 0;
-        let myTokens = 0;
-        for (const message of messages) {
-            if (message.user_id === parseInt(interaction.user.id)) {
-                myInteractions++;
-                myTokens += message.count_tokens;
-            }
-            totalInteractions++;
-            totalTokens += message.count_tokens;
-        }
-        return interaction.editReply({
+        const myInteractions = stats.users[interaction.user.id]?.interactions || 0;
+        const myTokens = stats.users[interaction.user.id]?.tokens || 0;
+        return interaction.reply({
             content: [
-                `**Total interactions:** ${totalInteractions}`,
-                `**Total tokens:** ${totalTokens}`,
-                `**Total cost:** \$${(totalTokens*config.usd_per_token).toFixed(2)}`,
+                `**Total interactions:** ${stats.totalInteractions}`,
+                `**Total tokens:** ${stats.totalTokens}`,
+                `**Total cost:** \$${(stats.totalTokens*config.usd_per_token).toFixed(2)}`,
                 ``,
                 `**My interactions:** ${myInteractions}`,
                 `**My tokens:** ${myTokens}`,
@@ -163,3 +181,14 @@ bot.on('interactionCreate', async interaction => {
 });
 
 bot.login(config.discord.token);
+
+setInterval(() => {
+    const db = sqlite3('./main.db');
+    const messages = db.prepare(`SELECT * FROM messages WHERE time_created < ?`).all((Date.now()-config.delete_message_days*24*60*60*1000));
+    for (const message of messages) {
+        db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
+    }
+    db.close();
+    if (messages.length > 0)
+        console.log(`Deleted ${messages.length} old messages`);
+}, (60*60*1000));

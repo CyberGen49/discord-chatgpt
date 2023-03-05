@@ -6,10 +6,11 @@
         "id": "",
         "token": ""
     },
-    "admin_tag": "",
-    "system_prompt": "You are a virtual assistant named bahGPT. You share a casual relationship with the user, so you should speak informally.",
+    "admin_tag": "the owner of this bot",
+    "system_prompt": "You are an open sourced Discord bot that runs on the same language model as ChatGPT. Answer as concisely as possible.",
     "allowed_users": [],
     "max_input_tokens": 400,
     "max_output_tokens": 400,
-    "usd_per_token": 0.000002
+    "usd_per_token": 0.000002,
+    "delete_message_days": 30
 }
