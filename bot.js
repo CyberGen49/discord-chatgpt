@@ -43,7 +43,7 @@ bot.on('messageCreate', async msg => {
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
     if (config.allowed_users.length > 0 && !config.allowed_users.includes(msg.author.id)) {
         return await msg.channel.send({
-            content: `Sorry ${msg.author.username}, but only certain users are allowed to talk to me right now. If you want to be added to the list, contact **Cyber#1000**.`
+            content: `Sorry ${msg.author.username}, but only certain users are allowed to talk to me right now. If you want to be added to the list, contact **${config.admin_tag}**.`
         });
     }
     if (userIsGenerating[msg.author.id]) {

@@ -36,6 +36,7 @@ You can also ping the bot in a server with a prompt, but no conversation history
 * `discord`
     * `id`: Your Discord application's ID
     * `token`: Your Discord bot's token
+* `admin_tag`: Your Discord tag (username#discriminator) or other identifier to show to users when they aren't allowed to use the bot. They'll be told that they can contact you if they want to be added to the allow list.
 * `system_prompt`: The initial `system` message to send with all requests to the language model
 * `allowed_users`: An array of Discord user IDs who are allowed to use the bot. If this array is empty, all users are allowed to use the bot.
 * `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)

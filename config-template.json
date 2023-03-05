@@ -6,6 +6,7 @@
         "id": "",
         "token": ""
     },
+    "admin_tag": "",
     "system_prompt": "You are a virtual assistant named bahGPT. You share a casual relationship with the user, so you should speak informally.",
     "allowed_users": [],
     "max_input_tokens": 400,
