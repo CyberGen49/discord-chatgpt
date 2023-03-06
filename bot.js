@@ -15,8 +15,14 @@ const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
 const writeStats = () => fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
 const countTokens = text => tokens.encode(text).length;
 const getChatResponse = async(messages = [], user) => {
-    messages.unshift({ role: 'system', content: `The user you are chatting with is named "${user.username}"` });
-    messages.unshift({ role: 'system', content: config.system_prompt });
+    messages = [
+        { role: 'system', content: config.system_prompt },
+        {
+            role: 'system',
+            content: `The user you are chatting with is named "${user.username}".`
+        },
+        ...messages
+    ]
     const res = await axios.post('https://api.openai.com/v1/chat/completions', {
         model: 'gpt-3.5-turbo',
         messages: messages,
@@ -86,15 +92,21 @@ bot.on('messageCreate', async msg => {
     await sendTyping();
     let typingInterval = setInterval(sendTyping, 3000);
     try {
-        const messages = [{ role: 'user', content: input }];
+        let messages = [{ role: 'user', content: input }];
         if (msg.type == Discord.MessageType.Reply) {
             const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
             const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
-            messages.unshift({ role: msgType, content: srcMsg.content });
+            messages = [
+                { role: msgType, content: srcMsg.content },
+                ...messages
+            ];
             if (msgType == 'assistant') {
                 const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
                 if (lastMsg) {
-                    messages.unshift({ role: 'user', content: lastMsg.input });
+                    messages = [
+                        { role: 'user', content: lastMsg.input },
+                        ...messages
+                    ];
                     console.log(`Using replied-to saved input and output as context`);
                 } else {
                     console.log(`Using replied-to user message as context (couldn't find saved message)`);
@@ -105,8 +117,11 @@ bot.on('messageCreate', async msg => {
         } else if (!msg.guild) {
             const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
             if (lastMsg) {
-                messages.unshift({ role: 'assistant', content: lastMsg.output });
-                messages.unshift({ role: 'user', content: lastMsg.input });
+                messages = [
+                    { role: 'user', content: lastMsg.input },
+                    { role: 'assistant', content: lastMsg.output },
+                    ...messages
+                ];
                 console.log(`Using previous input and output as context`);
             }
         }
