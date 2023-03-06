@@ -46,9 +46,9 @@ Conversation history doesn't work by default in servers, but you can reply to an
 * `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database
 
 ## Database
-This bot stores every message sent to OpenAI, as well as its response, in the database generated during setup.
+The bot stores every message with its accompanying response in the database we generated during setup.
 
-The database contains a single table, `messages`, with columns are as follows:
+The database contains a single table, `messages`, with the following columns:
 
 * `time_created`: The timestamp of the interaction
 * `user_id`: The ID of the user who sent the message
