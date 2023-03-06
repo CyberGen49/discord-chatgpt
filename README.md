@@ -27,6 +27,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
     1. Follow the instructions to add the bot to your server
 1. Make any other changes to the config file ([see below](#configuration)), then save it
 1. Create the message database by running `sqlite3 main.db ".read schema.sql"`
+    * This is a required step. See [Database](#database) for details.
 1. Register the bot's slash commands by running `node registerCommands.js`
 1. Start the bot with `node bot.js`
     1. If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes
