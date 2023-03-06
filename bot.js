@@ -14,7 +14,8 @@ const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
 
 const writeStats = () => fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
 const countTokens = text => tokens.encode(text).length;
-const getChatResponse = async(messages = []) => {
+const getChatResponse = async(messages = [], user) => {
+    messages.unshift({ role: 'system', content: `The user you are chatting with is named "${user.username}"` });
     messages.unshift({ role: 'system', content: config.system_prompt });
     const res = await axios.post('https://api.openai.com/v1/chat/completions', {
         model: 'gpt-3.5-turbo',
@@ -109,7 +110,7 @@ bot.on('messageCreate', async msg => {
                 console.log(`Using previous input and output as context`);
             }
         }
-        const gpt = await getChatResponse(messages);
+        const gpt = await getChatResponse(messages, msg.author);
         gpt.reply = gpt.reply
             .replace(/([@])/g, '\\$1')
             .replace(/```\n\n/g, '```')
