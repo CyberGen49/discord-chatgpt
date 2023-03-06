@@ -14,7 +14,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 1. Run `npm install`
 1. Rename `config-template.json` to `config.json` and open it
 1. [Generate an OpenAI secret key](https://platform.openai.com/account/api-keys) and paste it in the `openai.secret` config field
-    * Note: Use of the Chat API isn't free. At the time of writing, it costs $0.002 for every 1000 [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them).
+    * Note: Use of the Chat API isn't free. At the time of writing, it costs $0.002 for every 1000 [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them). The token count of a request includes both the user's input, the model's output, and any conversational context provided.
 1. [Create a new Discord application](https://discord.com/developers/applications)
     1. Set its name, description, and picture
     1. Copy the Application ID and paste it in the `discord.id` config field
