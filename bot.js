@@ -22,21 +22,31 @@ const getChatResponse = async(messages = [], user) => {
             content: `The user you are chatting with is named "${user.username}".`
         },
         ...messages
-    ]
-    const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-        model: 'gpt-3.5-turbo',
-        messages: messages,
-        max_tokens: config.max_output_tokens
-    }, {
-        headers: { Authorization: `Bearer ${config.openai.secret}` }
-    });
-    const gpt = {
-        reply: res?.data?.choices[0].message.content || null,
-        count_tokens: res?.data?.usage.total_tokens
+    ];
+    try {
+        const res = await axios.post('https://api.openai.com/v1/chat/completions', {
+            model: 'gpt-3.5-turbo',
+            messages: messages,
+            max_tokens: config.max_output_tokens
+        }, {
+            headers: { Authorization: `Bearer ${config.openai.secret}` },
+            validateStatus: status => true
+        });
+        if (!res.data || res.data.error) {
+            console.error(`OpenAI request failed:`, res.data || 'No response data');
+            return res.data.error ? { error: res.data.error } : null;
+        }
+        const gpt = {
+            reply: res?.data?.choices[0].message.content || null,
+            count_tokens: res?.data?.usage.total_tokens
+        };
+        console.log(`Received response of ${gpt.count_tokens} tokens`);
+        return gpt;
+    } catch (error) {
+        console.error(error);
+        return null;
     }
-    console.log(`Received response of ${gpt.count_tokens} tokens`);
-    return gpt;
-}
+};
 
 const bot = new Discord.Client({
     intents: [
@@ -90,6 +100,31 @@ bot.on('messageCreate', async msg => {
     const db = sqlite3('./main.db');
     const sendTyping = async() => await msg.channel.sendTyping()
     await sendTyping();
+    const sendContent = async(content) => {
+        try {
+            const textFileName = `response-${msg.id}.txt`;
+            let shouldSendTextFile = false;
+            if (content.length > 1999) {
+                fs.writeFileSync(textFileName, content);
+                shouldSendTextFile = true;
+                content = `This response was too long to send as a message, so here it is in a text file:`;
+            }
+            let replyMethod = data => msg.channel.send(data);
+            if (now !== channelLastActive[msg.channel.id]) {
+                replyMethod = data => msg.reply(data);
+            }
+            const newMsg = await replyMethod({
+                content: content,
+                files: shouldSendTextFile ? [ textFileName ] : []
+            });
+            if (shouldSendTextFile)
+                fs.rmSync(textFileName);
+            return newMsg;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
+    }
     let typingInterval = setInterval(sendTyping, 3000);
     try {
         let messages = [{ role: 'user', content: input }];
@@ -126,6 +161,10 @@ bot.on('messageCreate', async msg => {
             }
         }
         const gpt = await getChatResponse(messages, msg.author);
+        if (!gpt || gpt.error) {
+            await sendContent(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
+            throw new Error(`Bad response from OpenAI, error message sent`);
+        }
         gpt.reply = gpt.reply
             .replace(/([@])/g, '\\$1')
             .replace(/```\n\n/g, '```')
@@ -141,16 +180,7 @@ bot.on('messageCreate', async msg => {
         stats.users[msg.author.id].tokens += gpt.count_tokens;
         writeStats();
         clearInterval(typingInterval);
-        let outputMsg;
-        if (now !== channelLastActive[msg.channel.id]) {
-            outputMsg = await msg.reply({
-                content: gpt.reply
-            });
-        } else {
-            outputMsg = await msg.channel.send({
-                content: gpt.reply
-            });
-        }
+        let outputMsg = await sendContent(gpt.reply);
         if (outputMsg && outputMsg.id) {
             db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
         }
@@ -173,13 +203,13 @@ const commands = {
         const myTokens = stats.users[interaction.user.id]?.tokens || 0;
         return interaction.reply({
             content: [
-                `**Total interactions:** ${stats.totalInteractions}`,
-                `**Total tokens:** ${stats.totalTokens}`,
-                `**Total cost:** \$${(stats.totalTokens*config.usd_per_token).toFixed(2)}`,
+                `**Total interactions:** ${stats.totalInteractions.toLocaleString()}`,
+                `**Total token count:** ${stats.totalTokens.toLocaleString()}`,
+                //`**Total cost:** \$${(stats.totalTokens*config.usd_per_token).toFixed(2)}`,
                 ``,
-                `**My interactions:** ${myInteractions}`,
-                `**My tokens:** ${myTokens}`,
-                `**My cost:** \$${(myTokens*config.usd_per_token).toFixed(2)}`
+                `**My interactions:** ${myInteractions.toLocaleString()}`,
+                `**My token count:** ${myTokens.toLocaleString()}`,
+                //`**My cost:** \$${(myTokens*config.usd_per_token).toFixed(2)}`
             ].join('\n'),
             ephemeral: true
         });
