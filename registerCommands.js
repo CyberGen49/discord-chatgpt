@@ -7,7 +7,10 @@ async function main() {
     const builders = [
         new Discord.SlashCommandBuilder()
             .setName('stats')
-            .setDescription('Get usage statistics for the bot')
+            .setDescription('Get usage statistics'),
+        new Discord.SlashCommandBuilder()
+            .setName('purge')
+            .setDescription('Purge your interactions from the database')
     ];
     // Register slash commands with Discord
     const api = new Discord.REST({ version: 10 }).setToken(config.discord.token);

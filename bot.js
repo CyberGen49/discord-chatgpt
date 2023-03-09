@@ -213,6 +213,17 @@ const commands = {
             ].join('\n'),
             ephemeral: true
         });
+    },
+    /** @type {CommandHandler} */
+    purge: async(interaction) => {
+        await interaction.deferReply({ ephemeral: true });
+        const db = sqlite3('./main.db');
+        const messages = db.prepare(`SELECT * FROM messages WHERE user_id = ?`).all(interaction.user.id);
+        for (const message of messages) {
+            db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
+        }
+        db.close();
+        return interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
     }
 };
 bot.on('interactionCreate', async interaction => {
