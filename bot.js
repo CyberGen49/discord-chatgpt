@@ -4,6 +4,8 @@ const sqlite3 = require('better-sqlite3');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
 const Discord = require('discord.js');
+const express = require('express');
+const logger = require('cyber-express-logger');
 const config = require('./config.json');
 
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
@@ -253,3 +255,10 @@ setInterval(() => {
     if (messages.length > 0)
         console.log(`Deleted ${messages.length} old messages`);
 }, (60*60*1000));
+
+const srv = express();
+srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }))
+srv.use((req, res, next) => {
+    res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
+});
+srv.listen(config.http_server_port, console.log(`HTTP server listening on port ${config.http_server_port}`));

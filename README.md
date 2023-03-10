@@ -45,6 +45,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 * `max_output_tokens`: The max size of the language model's responses in text tokens
 * `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.
 * `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database
+* `http_server_port`: A port to host the HTTP server on. For now, any request to that server is redirected to this GitHub repository.
 
 ## Database
 The bot stores every message with its accompanying response in the database we generated during setup.

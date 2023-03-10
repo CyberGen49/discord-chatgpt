@@ -12,5 +12,6 @@
     "max_input_tokens": 400,
     "max_output_tokens": 400,
     "usd_per_token": 0.000002,
-    "delete_message_days": 30
+    "delete_message_days": 30,
+    "http_server_port": 8080
 }
