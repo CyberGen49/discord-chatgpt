@@ -9,7 +9,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 
 ## Running the bot yourself
 1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
-1. [Download and install SQLite](https://www.sqlite.org/download.html/) if you don't have it
+1. [Download and install SQLite](https://www.sqlite.org/download.html) if you don't have it
 1. Clone (or download and unzip) the repository and `cd` into it with your terminal
 1. Run `npm install`
 1. Rename `config-template.json` to `config.json` and open it
