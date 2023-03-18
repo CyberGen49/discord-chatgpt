@@ -1,4 +1,5 @@
 /config.json
-/main.db
 /stats.json
+/users.json
+/main.db
 /node_modules

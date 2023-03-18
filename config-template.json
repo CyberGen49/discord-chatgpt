@@ -4,14 +4,20 @@
     },
     "discord": {
         "id": "",
-        "token": ""
+        "token": "",
+        "owner_id": ""
     },
-    "admin_tag": "the owner of this bot",
     "system_prompt": "You are an open sourced Discord bot that runs on the same language model as ChatGPT. Answer as concisely as possible.",
-    "allowed_users": [],
-    "max_input_tokens": 400,
-    "max_output_tokens": 400,
+    "max_input_tokens": 500,
+    "max_output_tokens": 500,
     "usd_per_token": 0.000002,
     "delete_message_days": 30,
-    "http_server_port": 8080
+    "public_usage": false,
+    "ignore_prefixes": [
+        "!", "/"
+    ],
+    "http_server": {
+        "enabled": false,
+        "port": 8080
+    }
 }

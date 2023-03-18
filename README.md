@@ -2,14 +2,27 @@
 # ChatGPT Discord Bot
 A Discord bot that allows users to interact with OpenAI's `gpt-3.5-turbo` large language model, which is the same one used for ChatGPT.
 
+Check out [the changelog](/Changelog.md) to see what's changed!
+
 ## Using the bot
 You can have a conversation with the bot by sending it a DM or pinging it in a server with a message. In DMs, the bot is only able to remember your previous interaction (question and answer), unlike ChatGPT, which is able to remember much further back than that.
 
 Conversation history doesn't work by default in servers, but you can reply to any message in a channel with a ping to the bot, along with another message. This will use the message you replied to as context. This works in DMs as well, if you want to re-address a message that was sent a while ago.
 
+### Slash commands
+* `/help`: Outputs some help information.
+* `/stats`: Outputs usage statistics.
+* `/purge`: Purges all of the user's message entries from the database.
+* `/fullpurge`: Purges all message entries from the database.
+* `/users`: Manages bot access.
+    * `/users allow <user>`: Allows a user to use the bot.
+    * `/users block <user>`: Blocks a user from using the bot.
+    * `/users unset <user>`: Removes a user from the allow/block list.
+    * `/users wipe`: Wipes the allow/block list.
+
 ## Running the bot yourself
 1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
-1. [Download and install SQLite](https://www.sqlite.org/download.html/) if you don't have it
+1. [Download and install SQLite](https://www.sqlite.org/download.html) if you don't have it
 1. Clone (or download and unzip) the repository and `cd` into it with your terminal
 1. Run `npm install`
 1. Rename `config-template.json` to `config.json` and open it
@@ -25,27 +38,42 @@ Conversation history doesn't work by default in servers, but you can reply to an
     1. Check "Bot", then copy the generated URL
     1. Open a new tab, paste the URL, and navigate to it
     1. Follow the instructions to add the bot to your server
-1. Make any other changes to the config file ([see below](#configuration)), then save it
-1. Create the message database by running `sqlite3 main.db ".read schema.sql"`
+1. Set your Discord user ID in the `discord.owner_id` config field.
+1. Make any other changes to the config file ([see below](#configuration)), then save it.
+1. Create the message database by running `sqlite3 main.db ".read schema.sql".`
     * This is a required step. See [Database](#database) for details.
 1. Register the bot's slash commands by running `node registerCommands.js`
 1. Start the bot with `node bot.js`
-    * If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes
+    * If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes.
+1. If you left `config.public_usage` disabled, use `/users allow` to allow yourself to use the bot.
+1. Try it out by DMing the bot a question!
 
 ## Configuration
+The main configuration is located in `config.json`:
+
 * `openai`
-    * `secret`: Your OpenAI secret key
+    * `secret`: Your OpenAI secret key.
 * `discord`
-    * `id`: Your Discord application's ID
-    * `token`: Your Discord bot's token
-* `admin_tag`: Your Discord tag (username#discriminator) or other identifier to show to users when they aren't allowed to use the bot. They'll be told that they can contact you if they want to be added to the allow list.
+    * `id`: Your Discord application's ID.
+    * `token`: Your Discord bot's token.
+    * `owner_id`: Your Discord user ID. Users will be told to contact this user if they aren't allowed to use the bot.
 * `system_prompt`: The initial `system` message to send with all requests to the language model. This can be used to influence how the model responds.
-* `allowed_users`: An array of Discord user IDs who are allowed to use the bot. If this array is empty, all users are allowed to use the bot.
 * `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
 * `max_output_tokens`: The max size of the language model's responses in text tokens
 * `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.
-* `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database
-* `http_server_port`: A port to host the HTTP server on. For now, any request to that server is redirected to this GitHub repository.
+* `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database.
+* `public_usage`: If `true`, all users will be able to use the bot by default. If `false`, only users allowed with `/users allow` will be able to use the bot.
+* `ignore_prefixes`: If one of these strings is present at the beginning of a message, the message will be ignored.
+* `http_server`
+    * `enabled`: Whether or not to enable the HTTP server. For now, any request to that server is redirected to this GitHub repository.
+    * `port`: The port to host the server on, if enabled.
+
+Allowed and blocked users are stored in `users.json`:
+
+* `allowed`: These Discord user IDs will be the only ones allowed to use the bot. Leave this array empty to allow all users by default.
+* `blocked`: These users will be blocked from using the bot.
+
+You can manage allowed and blocked users with the `/users` command and its subcommands.
 
 ## Database
 The bot stores every message with its accompanying response in the database we generated during setup.

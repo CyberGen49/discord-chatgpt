@@ -1,6 +1,8 @@
 
 const fs = require('fs');
 const sqlite3 = require('better-sqlite3');
+const dayjs = require('dayjs');
+const clc = require('cli-color');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
 const Discord = require('discord.js');
@@ -13,42 +15,21 @@ const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
     tokens: 0,
     users: {}
 };
-
-const writeStats = () => fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
-const countTokens = text => tokens.encode(text).length;
-const getChatResponse = async(messages = [], user) => {
-    messages = [
-        { role: 'system', content: config.system_prompt },
-        {
-            role: 'system',
-            content: `The user you are chatting with is named "${user.username}".`
-        },
-        ...messages
-    ];
-    try {
-        const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-            model: 'gpt-3.5-turbo',
-            messages: messages,
-            max_tokens: config.max_output_tokens
-        }, {
-            headers: { Authorization: `Bearer ${config.openai.secret}` },
-            validateStatus: status => true
-        });
-        if (!res.data || res.data.error) {
-            console.error(`OpenAI request failed:`, res.data || 'No response data');
-            return res.data.error ? { error: res.data.error } : null;
-        }
-        const gpt = {
-            reply: res?.data?.choices[0].message.content || null,
-            count_tokens: res?.data?.usage.total_tokens
-        };
-        console.log(`Received response of ${gpt.count_tokens} tokens`);
-        return gpt;
-    } catch (error) {
-        console.error(error);
-        return null;
-    }
+const users = fs.existsSync('./users.json') ? require('./users.json') : {
+    allowed: [],
+    blocked: []
 };
+
+const log = (...args) => console.log(clc.white(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`), ...args);
+const writeStats = () => {
+    fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
+    log(`Updated stats file`);
+}
+const writeUsers = () => {
+    fs.writeFileSync('./users.json', JSON.stringify(users, null, 4));
+    log(`Updated users file`);
+}
+const countTokens = text => tokens.encode(text).length;
 
 const bot = new Discord.Client({
     intents: [
@@ -61,52 +42,29 @@ const bot = new Discord.Client({
 });
 
 bot.once('ready', () => {
-    console.log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
-    bot.user.setActivity('your questions', { type: Discord.ActivityType.Listening });
+    log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
+    setInterval(() => {
+        bot.user.setActivity('your questions', { type: Discord.ActivityType.Listening });
+    }, (1000*60*60));
 });
 const userIsGenerating = {};
 const channelLastActive = {};
 bot.on('messageCreate', async msg => {
+    const state = clc.cyanBright(`[${msg.id}]`);
     const now = Date.now();
     channelLastActive[msg.channel.id] = now;
     if (msg.author.bot) return;
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
-    if (config.allowed_users.length > 0 && !config.allowed_users.includes(msg.author.id)) {
-        return await msg.channel.send({
-            content: `Sorry ${msg.author.username}, but only certain users are allowed to talk to me right now. If you want to be added to the list, contact **${config.admin_tag}**.`
-        });
+    const sendTyping = async() => {
+        log(state, `Typing in channel ${msg.channel.id}`);
+        await msg.channel.sendTyping();
     }
-    if (userIsGenerating[msg.author.id]) {
-        return await msg.channel.send({
-            content: `One message at a time, ${msg.author.username}!`
-        });
-    }
-    const input = msg.content.split(' ').filter(segment => !segment.match(/<(@|#)(\d+)>/)).join(' ').trim();
-    if (!input) {
-        const defaults = [
-            `Hi! How can I assist you today?`,
-            `Hello! How can I help you?`,
-            `Hello! Is there something specific you need help with or a question you have?`
-        ];
-        return await msg.channel.send({
-            content: defaults[Math.floor(Math.random() * defaults.length)]
-        });
-    }
-    if (countTokens(input) > config.max_input_tokens) {
-        return await msg.channel.send({
-            content: `${msg.author.username}, that message is too long for me to handle! Can you make it shorter?`
-        });
-    }
-    userIsGenerating[msg.author.id] = true;
-    console.log(`Responding to ${msg.author.username}#${msg.author.discriminator}...`);
-    const db = sqlite3('./main.db');
-    const sendTyping = async() => await msg.channel.sendTyping()
-    await sendTyping();
-    const sendContent = async(content) => {
+    const sendReply = async(content) => {
         try {
             const textFileName = `response-${msg.id}.txt`;
             let shouldSendTextFile = false;
             if (content.length > 1999) {
+                log(state, `Sending response as ${textFileName}`);
                 fs.writeFileSync(textFileName, content);
                 shouldSendTextFile = true;
                 content = `This response was too long to send as a message, so here it is in a text file:`;
@@ -119,15 +77,84 @@ bot.on('messageCreate', async msg => {
                 content: content,
                 files: shouldSendTextFile ? [ textFileName ] : []
             });
+            log(state, `Sent response, message ID ${newMsg.id}`);
             if (shouldSendTextFile)
                 fs.rmSync(textFileName);
             return newMsg;
         } catch (error) {
-            console.error(error);
+            log(state, error);
             return null;
         }
     }
-    let typingInterval = setInterval(sendTyping, 3000);
+    if (!config.public_usage && !users.allowed.includes(msg.author.id)) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} isn't allowed`);
+        return sendReply(`Only certain users are allowed to talk to me right now. If you want to be added to the list, contact <@${config.discord.owner_id}>.`);
+    }
+    if (users.blocked.includes(msg.author.id)) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
+        return sendReply(`You're blocked from using me!`);
+    }
+    if (userIsGenerating[msg.author.id]) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} tried to generate while generating`);
+        return sendReply(`One message at a time!`);
+    }
+    const input = msg.content.split(' ').filter(segment => !segment.match(/<(@|#)(\d+)>/)).join(' ').trim();
+    if (!input) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} made an empty ping`);
+        return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
+    }
+    for (const prefix of config.ignore_prefixes) {
+        if (input.startsWith(prefix)) {
+            return log(state, `User ${msg.author.username}#${msg.author.discriminator} used an ignored prefix`);
+        }
+    }
+    if (countTokens(input) > config.max_input_tokens) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a message that exceeded config.max_input_tokens`);
+        return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
+    }
+    const getChatResponse = async(messages = []) => {
+        messages = [
+            { role: 'system', content: config.system_prompt },
+            {
+                role: 'system',
+                content: `The user you are chatting with is named "${msg.author.username}".`
+            },
+            ...messages
+        ];
+        let tentativeTokenCount = 0;
+        for (const message of messages) {
+            const tokenCount = countTokens(message.content);
+            tentativeTokenCount += tokenCount;
+        }
+        tentativeTokenCount = countTokens(JSON.stringify(messages));
+        try {
+            log(state, `Making OpenAI request of approx. ${tentativeTokenCount} tokens`);
+            const res = await axios.post('https://api.openai.com/v1/chat/completions', {
+                model: 'gpt-3.5-turbo',
+                messages: messages,
+                max_tokens: config.max_output_tokens
+            }, {
+                headers: { Authorization: `Bearer ${config.openai.secret}` },
+                validateStatus: status => true
+            });
+            if (!res.data || res.data.error) {
+                log(state, `OpenAI request failed:`, res.data || '[No response data]');
+                return res.data.error ? { error: res.data.error } : null;
+            }
+            const gpt = {
+                reply: res?.data?.choices[0].message.content || null,
+                count_tokens: res?.data?.usage.total_tokens
+            };
+            log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
+            return gpt;
+        } catch (error) {
+            log(state, error);
+            return null;
+        }
+    };
+    await sendTyping();
+    const db = sqlite3('./main.db');
+    const typingInterval = setInterval(sendTyping, 3000);
     try {
         let messages = [{ role: 'user', content: input }];
         if (msg.type == Discord.MessageType.Reply) {
@@ -144,12 +171,12 @@ bot.on('messageCreate', async msg => {
                         { role: 'user', content: lastMsg.input },
                         ...messages
                     ];
-                    console.log(`Using replied-to saved input and output as context`);
+                    log(state, `Using replied-to saved input and output as context`);
                 } else {
-                    console.log(`Using replied-to user message as context (couldn't find saved message)`);
+                    log(state, `Using replied-to user message as context (couldn't find saved message)`);
                 }
             } else {
-                console.log(`Using replied-to user message as context`);
+                log(state, `Using replied-to user message as context`);
             }
         } else if (!msg.guild) {
             const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
@@ -159,12 +186,13 @@ bot.on('messageCreate', async msg => {
                     { role: 'assistant', content: lastMsg.output },
                     ...messages
                 ];
-                console.log(`Using previous input and output as context`);
+                log(state, `Using previous input and output as context`);
             }
         }
+        userIsGenerating[msg.author.id] = true;
         const gpt = await getChatResponse(messages, msg.author);
         if (!gpt || gpt.error) {
-            await sendContent(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
+            await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
             throw new Error(`Bad response from OpenAI, error message sent`);
         }
         gpt.reply = gpt.reply
@@ -182,12 +210,17 @@ bot.on('messageCreate', async msg => {
         stats.users[msg.author.id].tokens += gpt.count_tokens;
         writeStats();
         clearInterval(typingInterval);
-        let outputMsg = await sendContent(gpt.reply);
+        let outputMsg = await sendReply(gpt.reply);
         if (outputMsg && outputMsg.id) {
             db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
         }
     } catch (error) {
-        console.error(`Failed to send message`, error);
+        log(state, `Failed to send message`, error);
+        try {
+            await sendReply(`Sorry, something went wrong while replying!`);
+        } catch (error) {
+            log(state, `Failed to send error message`, error);
+        }
         clearInterval(typingInterval);
     }
     db.close();
@@ -200,10 +233,15 @@ bot.on('messageCreate', async msg => {
  */
 const commands = {
     /** @type {CommandHandler} */
+    help: async(interaction) => {
+        await interaction.reply(`I'm a bot who shares the same language model as ChatGPT! Send me a DM or ping me in a server and I'll be happy to assist you to the best of my abilities. In DMs, I'm able to remember your previous message and my response to it, and in DMs and servers, you can reply to any message (mine or someone else's) and I'll use it as context.\n\nNote that we save your interactions (inputs and outputs) to a database to provide conversation history. You can use \`/purge\` to remove all of that content at any time. OpenAI may also hang on to your inputs for a while, so see [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.\n\nInterested in the innerworkings or want to run me for yourself? [Read my source code on GitHub](<https://github.com/CyberGen49/discord-chatgpt>)!`);
+        log(`${interaction.user.username}#${interaction.user.discriminator} used /help`);
+    },
+    /** @type {CommandHandler} */
     stats: async(interaction) => {
         const myInteractions = stats.users[interaction.user.id]?.interactions || 0;
         const myTokens = stats.users[interaction.user.id]?.tokens || 0;
-        return interaction.reply({
+        await interaction.reply({
             content: [
                 `**Total interactions:** ${stats.totalInteractions.toLocaleString()}`,
                 `**Total token count:** ${stats.totalTokens.toLocaleString()}`,
@@ -215,6 +253,7 @@ const commands = {
             ].join('\n'),
             ephemeral: true
         });
+        log(`${interaction.user.username}#${interaction.user.discriminator} got stats`);
     },
     /** @type {CommandHandler} */
     purge: async(interaction) => {
@@ -225,20 +264,71 @@ const commands = {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
         }
         db.close();
-        return interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
+        log(`${interaction.user.username}#${interaction.user.discriminator} purged their saved messages`);
+        interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
     },
     /** @type {CommandHandler} */
-    help: async(interaction) => {
-        return interaction.reply(`I'm a bot who shares the same language model as ChatGPT! Send me a DM or ping me in a server and I'll be happy to assist you to the best of my abilities. In DMs, I'm able to remember your previous message and my response to it, and in DMs and servers, you can reply to any message (mine or someone else's) and I'll use it as context.\n\nNote that we save your interactions (inputs and outputs) to a database to provide conversation history. You can use \`/purge\` to remove all of that content at any time. OpenAI may also hang on to your inputs for a while, so see [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.\n\nInterested in the innerworkings or want to run me for yourself? [Read my source code on GitHub](<https://github.com/CyberGen49/discord-chatgpt>)!`);
+    fullpurge: async(interaction) => {
+        await interaction.deferReply({ ephemeral: true });
+        if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
+        const db = sqlite3('./main.db');
+        const messages = db.prepare(`SELECT * FROM messages`).all();
+        for (const message of messages) {
+            db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
+        }
+        db.close();
+        log(`${interaction.user.username}#${interaction.user.discriminator} purged all saved messages`);
+        interaction.editReply(`Purged ${messages.length} interactions from the database.`);
+    },
+    /** @type {CommandHandler} */
+    users: async(interaction) => {
+        await interaction.deferReply({ ephemeral: true });
+        if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
+        const unsetUser = id => {
+            users.allowed.splice(users.allowed.indexOf(id), 1);
+            users.blocked.splice(users.blocked.indexOf(id), 1);
+        }
+        const subCommand = {
+            allow: () => {
+                const user = interaction.options.getUser('user');
+                unsetUser(user.id);
+                users.allowed.push(user.id);
+                log(`${interaction.user.username}#${interaction.user.discriminator} allowed ${user.username}#${user.discriminator} to use the bot`);
+                writeUsers();
+                interaction.editReply(`<@${user.id}> can now use the bot!`);
+            },
+            block: () => {
+                const user = interaction.options.getUser('user');
+                unsetUser(user.id);
+                users.blocked.push(user.id);
+                log(`${interaction.user.username}#${interaction.user.discriminator} blocked ${user.username}#${user.discriminator} from using the bot`);
+                writeUsers();
+                interaction.editReply(`<@${user.id}> is now blocked from using the bot.`);
+            },
+            unset: () => {
+                const user = interaction.options.getUser('user');
+                unsetUser(user.id);
+                log(`${interaction.user.username}#${interaction.user.discriminator} unset ${user.username}#${user.discriminator}'s bot usage`);
+                writeUsers();
+                interaction.editReply(`<@${user.id}> is no longer allowed or blocked from using the bot. The \`config.public_usage\` option will now apply.`);
+            },
+            wipe: () => {
+                users.allowed = [];
+                users.blocked = [];
+                log(`${interaction.user.username}#${interaction.user.discriminator} wiped the allow/block list`);
+                writeUsers();
+                interaction.editReply(`Wiped the list of allowed and blocked users. The \`config.public_usage\` option will now apply to all users.`);
+            }
+        };
+        subCommand[interaction.options.getSubcommand()]();
     }
 };
 bot.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         try {
             await commands[interaction.commandName](interaction);
-            console.log(`Handled ${interaction.user.username}#${interaction.user.discriminator}'s use of /${interaction.commandName}`);
         } catch (error) {
-            console.error(`Error while handling slash command:`, error);
+            log(`Error while handling slash command:`, error);
         }
     }
 });
@@ -253,12 +343,14 @@ setInterval(() => {
     }
     db.close();
     if (messages.length > 0)
-        console.log(`Deleted ${messages.length} old messages`);
+        log(`Deleted ${messages.length} old messages`);
 }, (60*60*1000));
 
-const srv = express();
-srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }))
-srv.use((req, res, next) => {
-    res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
-});
-srv.listen(config.http_server_port, console.log(`HTTP server listening on port ${config.http_server_port}`));
+if (config.http_server.enabled) {
+    const srv = express();
+    srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }))
+    srv.use((req, res, next) => {
+        res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
+    });
+    srv.listen(config.http_server.port, log(`HTTP server listening on port ${config.http_server.port}`));
+} else log(`HTTP server is disabled`);
