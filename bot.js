@@ -13,7 +13,8 @@ const config = require('./config.json');
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
     messages: 0,
     tokens: 0,
-    users: {}
+    users: {},
+    months: {}
 };
 const users = fs.existsSync('./users.json') ? require('./users.json') : {
     allowed: [],
@@ -199,14 +200,34 @@ bot.on('messageCreate', async msg => {
             .replace(/```\n\n/g, '```')
             .replace(/\n\n```/g, '\n```');
         db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
-        stats.totalInteractions++;
-        stats.totalTokens += gpt.count_tokens;
+        const month = dayjs().format('YYYY-MM');
+        // Initialize stats object
         stats.users[msg.author.id] = stats.users[msg.author.id] || {
             interactions: 0,
             tokens: 0
         };
+        if (!stats.months) stats.months = {};
+        if (!stats.months[month]) stats.months[month] = {
+            totalInteractions: 0,
+            totalTokens: 0,
+            users: {}
+        };
+        if (!stats.months[month].users[msg.author.id]) {
+            stats.months[month].users[msg.author.id] = {
+                interactions: 0,
+                tokens: 0
+            }
+        }
+        // Update all-time stats
+        stats.totalInteractions++;
+        stats.totalTokens += gpt.count_tokens;
         stats.users[msg.author.id].interactions++;
         stats.users[msg.author.id].tokens += gpt.count_tokens;
+        // Update monthly stats
+        stats.months[month].totalInteractions++;
+        stats.months[month].totalTokens += gpt.count_tokens;
+        stats.months[month].users[msg.author.id].interactions++;
+        stats.months[month].users[msg.author.id].tokens += gpt.count_tokens;
         writeStats();
         clearInterval(typingInterval);
         let outputMsg = await sendReply(gpt.reply);

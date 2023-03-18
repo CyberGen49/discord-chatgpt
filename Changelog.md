@@ -11,6 +11,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Add `/users` command and subcommands
 - Add `public_usage` config option
 - Add `ignore_prefixes` config option
+- Save monthly stats in addition to all-time stats
 
 # 2023-03-17
 - Change config structure
