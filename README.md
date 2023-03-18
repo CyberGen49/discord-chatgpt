@@ -68,13 +68,6 @@ The main configuration is located in `config.json`:
     * `enabled`: Whether or not to enable the HTTP server. For now, any request to that server is redirected to this GitHub repository.
     * `port`: The port to host the server on, if enabled.
 
-Allowed and blocked users are stored in `users.json`:
-
-* `allowed`: These Discord user IDs will be the only ones allowed to use the bot. Leave this array empty to allow all users by default.
-* `blocked`: These users will be blocked from using the bot.
-
-You can manage allowed and blocked users with the `/users` command and its subcommands.
-
 ## Database
 The bot stores every message with its accompanying response in the database we generated during setup.
 
