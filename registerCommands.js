@@ -10,7 +10,11 @@ async function main() {
             .setDescription('Learn about the bot'),
         new Discord.SlashCommandBuilder()
             .setName('stats')
-            .setDescription('Get usage statistics'),
+            .setDescription('Get usage statistics')
+            .addUserOption(option => option
+                .setName(`user`)
+                .setDescription(`Get stats for this user`)
+            ),
         new Discord.SlashCommandBuilder()
             .setName('purge')
             .setDescription('Purge your interactions from the database'),

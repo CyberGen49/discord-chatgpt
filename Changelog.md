@@ -12,6 +12,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Add `public_usage` config option
 - Add `ignore_prefixes` config option
 - Save monthly stats in addition to all-time stats
+- Beef up stats command with embeds and option to check another user's stats
 
 # 2023-03-17
 - Change config structure

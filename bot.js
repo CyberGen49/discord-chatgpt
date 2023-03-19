@@ -23,11 +23,11 @@ const users = fs.existsSync('./users.json') ? require('./users.json') : {
 
 const log = (...args) => console.log(clc.white(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`), ...args);
 const writeStats = () => {
-    fs.writeFileSync('./stats.json', JSON.stringify(stats, null, 4));
+    fs.writeFileSync('./stats.json', JSON.stringify(stats));
     log(`Updated stats file`);
 }
 const writeUsers = () => {
-    fs.writeFileSync('./users.json', JSON.stringify(users, null, 4));
+    fs.writeFileSync('./users.json', JSON.stringify(users));
     log(`Updated users file`);
 }
 const countTokens = text => tokens.encode(text).length;
@@ -259,21 +259,72 @@ const commands = {
     },
     /** @type {CommandHandler} */
     stats: async(interaction) => {
-        const myInteractions = stats.users[interaction.user.id]?.interactions || 0;
-        const myTokens = stats.users[interaction.user.id]?.tokens || 0;
+        const user = interaction.options.getUser('user') || interaction.user;
+        const totalInteractions = stats.totalInteractions || 0;
+        const totalTokens = stats.totalTokens || 0;
+        const totalCost = totalTokens*config.usd_per_token;
+        const totalMyInteractions = stats.users[user.id]?.interactions || 0;
+        const totalMyTokens = stats.users[user.id]?.tokens || 0;
+        const totalMyCost = totalMyTokens*config.usd_per_token;
+        const month = dayjs().format('YYYY-MM');
+        const monthInteractions = stats.months?.[month]?.totalInteractions || 0;
+        const monthTokens = stats.months?.[month]?.totalTokens || 0;
+        const monthCost = monthTokens*config.usd_per_token;
+        const monthMyInteractions = stats.months?.[month]?.users?.[user.id]?.interactions || 0;
+        const monthMyTokens = stats.months?.[month]?.users?.[user.id]?.tokens || 0;
+        const monthMyCost = monthMyTokens*config.usd_per_token;
+        const allTimeEmbed = new Discord.EmbedBuilder()
+            .setTitle(`Global usage stats`)
+            .setColor(0x3789c8)
+            .addFields([
+                {
+                    name: `All-time`,
+                    value: [
+                        `${totalInteractions.toLocaleString()} messages`,
+                        `${totalTokens.toLocaleString()} tokens`,
+                        `\$${totalCost.toFixed(2)} used`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `This month`,
+                    value: [
+                        `${monthInteractions.toLocaleString()} messages`,
+                        `${monthTokens.toLocaleString()} tokens`,
+                        `\$${monthCost.toFixed(2)} used`
+                    ].join('\n'),
+                    inline: true
+                }
+            ]);
+        const userEmbed = new Discord.EmbedBuilder()
+            .setTitle(`${(interaction.user.id == user.id) ? 'My' : `${user.username}'s`} usage stats`)
+            .setColor(0x3789c8)
+            .addFields([
+                {
+                    name: `All-time`,
+                    value: [
+                        `${totalMyInteractions.toLocaleString()} messages`,
+                        `${totalMyTokens.toLocaleString()} tokens`,
+                        `\$${totalMyCost.toFixed(2)} used`
+                    ].join('\n'),
+                    inline: true
+                },
+                {
+                    name: `This month`,
+                    value: [
+                        `${monthMyInteractions.toLocaleString()} messages`,
+                        `${monthMyTokens.toLocaleString()} tokens`,
+                        `\$${monthMyCost.toFixed(2)} used`
+                    ].join('\n'),
+                    inline: true
+                }
+            ]);
+        const embeds = (interaction.user.id == user.id) ? [allTimeEmbed, userEmbed] : [userEmbed];
         await interaction.reply({
-            content: [
-                `**Total interactions:** ${stats.totalInteractions.toLocaleString()}`,
-                `**Total token count:** ${stats.totalTokens.toLocaleString()}`,
-                //`**Total cost:** \$${(stats.totalTokens*config.usd_per_token).toFixed(2)}`,
-                ``,
-                `**My interactions:** ${myInteractions.toLocaleString()}`,
-                `**My token count:** ${myTokens.toLocaleString()}`,
-                //`**My cost:** \$${(myTokens*config.usd_per_token).toFixed(2)}`
-            ].join('\n'),
+            embeds: embeds,
             ephemeral: true
         });
-        log(`${interaction.user.username}#${interaction.user.discriminator} got stats`);
+        log(`${interaction.user.username}#${interaction.user.discriminator} got stats for ${user.username}#${user.discriminator}`);
     },
     /** @type {CommandHandler} */
     purge: async(interaction) => {
