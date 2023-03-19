@@ -418,6 +418,17 @@ const commands = {
         subCommand[interaction.options.getSubcommand()]();
     }
 };
+bot.on('messageDelete', async msg => {
+    if (msg.author.bot) return;
+    const db = sqlite3('./main.db');
+    const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
+    if (!entry) return;
+    const response = await msg.channel.messages.fetch(entry.output_msg_id);
+    await response.delete();
+    log(`Deleted response message ${entry.output_msg_id} because input message ${msg.id} was deleted`);
+    db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
+    db.close();
+});
 bot.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         try {

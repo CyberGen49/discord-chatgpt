@@ -16,6 +16,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Allow placeholders to be used in the system prompt
 - Message users when they're allowed or blocked
 - Message the owner an allow button when a non-allowed user tries using the bot
+- Delete response message when the input message is deleted
 
 # 2023-03-17
 - Change config structure
