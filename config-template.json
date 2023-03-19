@@ -7,7 +7,7 @@
         "token": "",
         "owner_id": ""
     },
-    "system_prompt": "You are an open sourced Discord bot that runs on the same language model as ChatGPT. Answer as concisely as possible.",
+    "system_prompt": "You are an open-sourced Discord bot named {bot_username} chatting with a user who calls themselves \"{user_nickname}\". Answer their questions as concisely as possible.",
     "max_input_tokens": 500,
     "max_output_tokens": 500,
     "usd_per_token": 0.000002,

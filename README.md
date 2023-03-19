@@ -57,7 +57,10 @@ The main configuration is located in `config.json`:
     * `id`: Your Discord application's ID.
     * `token`: Your Discord bot's token.
     * `owner_id`: Your Discord user ID. Users will be told to contact this user if they aren't allowed to use the bot.
-* `system_prompt`: The initial `system` message to send with all requests to the language model. This can be used to influence how the model responds.
+* `system_prompt`: The initial `system` message to send with all requests to the language model. This can be used to influence how the model responds. This option can contain `{placeholders}` to customize the system prompt to each message:
+    * `{bot_username}`: The bot's username
+    * `{user_username}`: The user's username
+    * `{user_nickname}`: The user's server nickname, or their username otherwise
 * `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
 * `max_output_tokens`: The max size of the language model's responses in text tokens
 * `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.

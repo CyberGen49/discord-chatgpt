@@ -113,12 +113,14 @@ bot.on('messageCreate', async msg => {
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
     const getChatResponse = async(messages = []) => {
+        const placeholders = {
+            user_username: msg.author.username,
+            user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id)?.displayName : msg.author.username,
+            bot_username: bot.user.username
+        }
+        const systemPrompt = config.system_prompt.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
         messages = [
-            { role: 'system', content: config.system_prompt },
-            {
-                role: 'system',
-                content: `The user you are chatting with is named "${msg.author.username}".`
-            },
+            { role: 'system', content: systemPrompt },
             ...messages
         ];
         let tentativeTokenCount = 0;
