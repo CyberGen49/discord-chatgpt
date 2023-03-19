@@ -57,6 +57,9 @@ The main configuration is located in `config.json`:
     * `id`: Your Discord application's ID.
     * `token`: Your Discord bot's token.
     * `owner_id`: Your Discord user ID. Users will be told to contact this user if they aren't allowed to use the bot.
+    * `status`:
+        * `type`: The status prefix. Can be `Playing`, `Watching`, or `Listening`.
+        * `text`: The status text.
 * `system_prompt`: The initial `system` message to send with all requests to the language model. This can be used to influence how the model responds. This option can contain `{placeholders}` to customize the system prompt to each message:
     * `{bot_username}`: The bot's username
     * `{user_username}`: The user's username

@@ -44,7 +44,9 @@ const bot = new Discord.Client({
 
 bot.once('ready', () => {
     log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
-    const setStatus = () => bot.user.setActivity('your questions', { type: Discord.ActivityType.Listening });
+    const setStatus = () => bot.user.setActivity(config.discord.status.text, {
+        type: Discord.ActivityType[config.discord.status.type]
+    });
     setInterval(setStatus, (1000*60*60));
     setStatus();
 });
