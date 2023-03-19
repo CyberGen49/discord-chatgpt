@@ -1,7 +1,7 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
-# 2023-03-18
+## 2023-03-18
 - Add timestamps and colour to logs
 - Make logs more verbose
 - Add the ability to block users in the users file
@@ -19,7 +19,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Delete response message when the input message is deleted
 - Regenerate response message when the input message is edited
 
-# 2023-03-17
+## 2023-03-17
 - Change config structure
     - Add config option to disable the HTTP server
 - Move allowed users to their own file
