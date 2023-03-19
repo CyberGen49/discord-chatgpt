@@ -87,7 +87,20 @@ bot.on('messageCreate', async msg => {
     }
     if (!config.public_usage && !users.allowed.includes(msg.author.id)) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} isn't allowed`);
-        return sendReply(`Only certain users are allowed to talk to me right now. If you want to be added to the list, contact <@${config.discord.owner_id}>.`);
+        const owner = await bot.users.fetch(config.discord.owner_id);
+        await owner.send({
+            content: `<@${msg.author.id}> tried using the bot but they aren't allowed to.`,
+            components: [
+                new Discord.ActionRowBuilder()
+                    .addComponents([
+                        new Discord.ButtonBuilder()
+                            .setCustomId(`user.allow.${msg.author.id}`)
+                            .setLabel('Allow')
+                            .setStyle(Discord.ButtonStyle.Success)
+                    ])
+            ]
+        });
+        return sendReply(`Only certain users are allowed to talk to me right now. A message was sent to <@${config.discord.owner_id}> where they can add you if they want.`);
     }
     if (users.blocked.includes(msg.author.id)) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
@@ -406,6 +419,25 @@ bot.on('interactionCreate', async interaction => {
             await commands[interaction.commandName](interaction);
         } catch (error) {
             log(`Error while handling slash command:`, error);
+        }
+    }
+    if (interaction.isButton()) {
+        try {
+            const params = interaction.customId.split('.');
+            if (params[0] == 'user') {
+                if (params[1] == 'allow') {
+                    const id = params[2];
+                    const user = await bot.users.fetch(id);
+                    if (users.blocked.includes(id))
+                        users.blocked.splice(users.blocked.indexOf(id), 1);
+                    users.allowed.push(id);
+                    log(`User ${user.username}#${user.discriminator} was allowed to use the bot (via button)`);
+                    writeUsers();
+                    interaction.reply({ content: `<@${id}> is now allowed to use the bot!` });
+                }
+            }
+        } catch (error) {
+            log(`Error while handling button:`, error);
         }
     }
 });

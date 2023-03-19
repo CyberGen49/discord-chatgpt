@@ -15,6 +15,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Beef up stats command with embeds and option to check another user's stats
 - Allow placeholders to be used in the system prompt
 - Message users when they're allowed or blocked
+- Message the owner an allow button when a non-allowed user tries using the bot
 
 # 2023-03-17
 - Change config structure
