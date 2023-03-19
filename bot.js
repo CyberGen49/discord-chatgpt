@@ -46,6 +46,7 @@ bot.once('ready', () => {
     log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
     const setStatus = () => bot.user.setActivity('your questions', { type: Discord.ActivityType.Listening });
     setInterval(setStatus, (1000*60*60));
+    setStatus();
 });
 const userIsGenerating = {};
 const channelLastActive = {};
@@ -97,7 +98,7 @@ bot.on('messageCreate', async msg => {
                     .addComponents([
                         new Discord.ButtonBuilder()
                             .setCustomId(`user.allow.${msg.author.id}`)
-                            .setLabel('Allow')
+                            .setLabel(`Allow ${msg.author.username}`)
                             .setStyle(Discord.ButtonStyle.Success)
                     ])
             ]
@@ -210,7 +211,7 @@ bot.on('messageCreate', async msg => {
         }
         userIsGenerating[msg.author.id] = true;
         const gpt = await getChatResponse(messages, msg.author);
-        if (!gpt || gpt.error) {
+        if (!gpt || gpt?.error) {
             //await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
             throw new Error(`Bad response from OpenAI, error message sent`);
         }
@@ -411,7 +412,7 @@ const commands = {
                 users.blocked = [];
                 log(`${interaction.user.username}#${interaction.user.discriminator} wiped the allow/block list`);
                 writeUsers();
-                interaction.editReply(`Wiped the list of allowed and blocked users. The \`config.public_usage\` option will now apply to all users.`);
+                interaction.editReply(`The list of allowed and blocked users has been wiped. The \`config.public_usage\` option will now apply to all users.`);
             }
         };
         subCommand[interaction.options.getSubcommand()]();
