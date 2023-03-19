@@ -211,7 +211,7 @@ bot.on('messageCreate', async msg => {
         userIsGenerating[msg.author.id] = true;
         const gpt = await getChatResponse(messages, msg.author);
         if (!gpt || gpt.error) {
-            await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
+            //await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
             throw new Error(`Bad response from OpenAI, error message sent`);
         }
         gpt.reply = gpt.reply
