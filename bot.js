@@ -58,7 +58,7 @@ bot.on('messageCreate', async msg => {
     const sendTyping = async() => {
         await msg.channel.sendTyping();
     }
-    const sendReply = async(content) => {
+    const sendReply = async(content, allowedMentions) => {
         try {
             const textFileName = `response-${msg.id}.txt`;
             let shouldSendTextFile = false;
@@ -72,10 +72,12 @@ bot.on('messageCreate', async msg => {
             if (now !== channelLastActive[msg.channel.id]) {
                 replyMethod = data => msg.reply(data);
             }
-            const newMsg = await replyMethod({
+            const data = {
                 content: content,
                 files: shouldSendTextFile ? [ textFileName ] : []
-            });
+            };
+            if (allowedMentions) data.allowedMentions = allowedMentions;
+            const newMsg = await replyMethod(data);
             log(state, `Sent response, message ID ${newMsg.id}`);
             if (shouldSendTextFile)
                 fs.rmSync(textFileName);
@@ -100,7 +102,9 @@ bot.on('messageCreate', async msg => {
                     ])
             ]
         });
-        return sendReply(`Only certain users are allowed to talk to me right now. A message was sent to <@${config.discord.owner_id}> where they can add you if they want.`);
+        return sendReply(`Only certain users are allowed to talk to me right now. A message has been sent to <@${config.discord.owner_id}> where they can add you if they want.`, {
+            users: []
+        });
     }
     if (users.blocked.includes(msg.author.id)) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
