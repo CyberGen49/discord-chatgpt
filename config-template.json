@@ -5,7 +5,11 @@
     "discord": {
         "id": "",
         "token": "",
-        "owner_id": ""
+        "owner_id": "",
+        "status": {
+            "type": "Listening",
+            "text": "your questions"
+        }
     },
     "system_prompt": "You are an open-sourced Discord bot named {bot_username} chatting with a user who calls themselves \"{user_nickname}\". Answer their questions as concisely as possible.",
     "max_input_tokens": 500,
