@@ -56,7 +56,6 @@ bot.on('messageCreate', async msg => {
     if (msg.author.bot) return;
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
     const sendTyping = async() => {
-        log(state, `Typing in channel ${msg.channel.id}`);
         await msg.channel.sendTyping();
     }
     const sendReply = async(content) => {
@@ -371,6 +370,7 @@ const commands = {
                 log(`${interaction.user.username}#${interaction.user.discriminator} allowed ${user.username}#${user.discriminator} to use the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> can now use the bot!`);
+                user.send({ content: `You've been added to the allow list and can now talk to me!` });
             },
             block: () => {
                 const user = interaction.options.getUser('user');
@@ -379,6 +379,7 @@ const commands = {
                 log(`${interaction.user.username}#${interaction.user.discriminator} blocked ${user.username}#${user.discriminator} from using the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is now blocked from using the bot.`);
+                user.send({ content: `You've been blocked from talking to me.` });
             },
             unset: () => {
                 const user = interaction.options.getUser('user');
