@@ -17,6 +17,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Message users when they're allowed or blocked
 - Message the owner an allow button when a non-allowed user tries using the bot
 - Delete response message when the input message is deleted
+- Regenerate response message when the input message is edited
 
 # 2023-03-17
 - Change config structure

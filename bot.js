@@ -39,7 +39,7 @@ const bot = new Discord.Client({
         Discord.GatewayIntentBits.DirectMessages,
         Discord.GatewayIntentBits.MessageContent
     ],
-    partials: [ Discord.Partials.Channel ]
+    partials: [ Discord.Partials.Channel, Discord.Partials.Message ]
 });
 
 bot.once('ready', () => {
@@ -50,7 +50,7 @@ bot.once('ready', () => {
 });
 const userIsGenerating = {};
 const channelLastActive = {};
-bot.on('messageCreate', async msg => {
+bot.on('messageCreate', async(msg, existingReply = null) => {
     const state = clc.cyanBright(`[${msg.id}]`);
     const now = Date.now();
     channelLastActive[msg.channel.id] = now;
@@ -72,6 +72,9 @@ bot.on('messageCreate', async msg => {
             let replyMethod = data => msg.channel.send(data);
             if (now !== channelLastActive[msg.channel.id]) {
                 replyMethod = data => msg.reply(data);
+            }
+            if (existingReply) {
+                replyMethod = data => existingReply.edit(data);
             }
             const data = {
                 content: content,
@@ -165,6 +168,10 @@ bot.on('messageCreate', async msg => {
                 reply: res?.data?.choices[0].message.content || null,
                 count_tokens: res?.data?.usage.total_tokens
             };
+            if (gpt.reply) gpt.reply = gpt.reply
+                .replace(/([@])/g, '\\$1')
+                .replace(/```\n\n/g, '```')
+                .replace(/\n\n```/g, '\n```');
             log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
             return gpt;
         } catch (error) {
@@ -199,7 +206,8 @@ bot.on('messageCreate', async msg => {
                 log(state, `Using replied-to user message as context`);
             }
         } else if (!msg.guild) {
-            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
+            const time = existingReply ? existingReply.createdTimestamp : Date.now();
+            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND time_created < ? ORDER BY time_created DESC LIMIT 1`).get(time, msg.channel.id);
             if (lastMsg) {
                 messages = [
                     { role: 'user', content: lastMsg.input },
@@ -215,11 +223,11 @@ bot.on('messageCreate', async msg => {
             //await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
             throw new Error(`Bad response from OpenAI, error message sent`);
         }
-        gpt.reply = gpt.reply
-            .replace(/([@])/g, '\\$1')
-            .replace(/```\n\n/g, '```')
-            .replace(/\n\n```/g, '\n```');
-        db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
+        if (existingReply) {
+            db.prepare(`UPDATE messages SET input = ?, output = ?, count_tokens = ?`).run(msg.content, gpt.reply, gpt.count_tokens);
+        } else {
+            db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
+        }
         const month = dayjs().format('YYYY-MM');
         // Initialize stats object
         stats.users[msg.author.id] = stats.users[msg.author.id] || {
@@ -265,6 +273,29 @@ bot.on('messageCreate', async msg => {
     }
     db.close();
     userIsGenerating[msg.author.id] = false;
+});
+bot.on('messageDelete', async msg => {
+    if (msg.author.bot) return;
+    const db = sqlite3('./main.db');
+    const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
+    if (!entry) return;
+    const response = await msg.channel.messages.fetch(entry.output_msg_id);
+    if (!response) return;
+    await response.delete();
+    log(`Deleted response message ${entry.output_msg_id} because input message ${msg.id} was deleted`);
+    db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
+    db.close();
+});
+bot.on('messageUpdate', async(msgOld, msg) => {
+    if (msg.author.bot) return;
+    log(`Message ${msg.id} was edited`);
+    const db = sqlite3('./main.db');
+    const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
+    if (!entry) return;
+    const response = await msg.channel.messages.fetch(entry.output_msg_id);
+    if (!response) return;
+    bot.emit('messageCreate', msg, response);
+    db.close();
 });
 
 /**
@@ -418,17 +449,6 @@ const commands = {
         subCommand[interaction.options.getSubcommand()]();
     }
 };
-bot.on('messageDelete', async msg => {
-    if (msg.author.bot) return;
-    const db = sqlite3('./main.db');
-    const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
-    if (!entry) return;
-    const response = await msg.channel.messages.fetch(entry.output_msg_id);
-    await response.delete();
-    log(`Deleted response message ${entry.output_msg_id} because input message ${msg.id} was deleted`);
-    db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
-    db.close();
-});
 bot.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         try {
