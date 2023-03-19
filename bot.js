@@ -358,9 +358,9 @@ const commands = {
         await interaction.deferReply({ ephemeral: true });
         if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
         const unsetUser = id => {
-            if (user.allowed.includes(id))
+            if (users.allowed.includes(id))
                 users.allowed.splice(users.allowed.indexOf(id), 1);
-            if (user.blocked.includes(id))
+            if (users.blocked.includes(id))
                 users.blocked.splice(users.blocked.indexOf(id), 1);
         }
         const subCommand = {
