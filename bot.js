@@ -104,6 +104,10 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             return null;
         }
     }
+    if (users.blocked.includes(msg.author.id)) {
+        log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
+        return sendReply(`You're blocked from using me!`);
+    }
     const isOwner = msg.author.id === config.discord.owner_id;
     if (!config.public_usage && !users.allowed.includes(msg.author.id) && !isOwner) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} isn't allowed`);
@@ -116,17 +120,17 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                         new Discord.ButtonBuilder()
                             .setCustomId(`user.allow.${msg.author.id}`)
                             .setLabel(`Allow ${msg.author.username}`)
-                            .setStyle(Discord.ButtonStyle.Success)
+                            .setStyle(Discord.ButtonStyle.Success),
+                        new Discord.ButtonBuilder()
+                            .setCustomId(`user.block.${msg.author.id}`)
+                            .setLabel(`Block ${msg.author.username}`)
+                            .setStyle(Discord.ButtonStyle.Danger)
                     ])
             ]
         });
-        return sendReply(`Only certain users are allowed to talk to me right now. A message has been sent to <@${config.discord.owner_id}> where they can add you if they want.`, {
+        return sendReply(`Only certain users are allowed to talk to me right now. A message has been sent to <@${config.discord.owner_id}> so they can add you if they want.`, {
             users: []
         });
-    }
-    if (users.blocked.includes(msg.author.id)) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
-        return sendReply(`You're blocked from using me!`);
     }
     if (userIsGenerating[msg.author.id]) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} tried to generate while generating`);
@@ -538,12 +542,26 @@ bot.on('interactionCreate', async interaction => {
                 if (params[1] == 'allow') {
                     const id = params[2];
                     const user = await bot.users.fetch(id);
-                    if (users.blocked.includes(id))
-                        users.blocked.splice(users.blocked.indexOf(id), 1);
                     users.allowed.push(id);
                     log(`User ${user.username}#${user.discriminator} was allowed to use the bot (via button)`);
                     writeUsers();
-                    interaction.reply({ content: `<@${id}> is now allowed to use the bot!` });
+                    try {
+                        user.send({ content: `Your request to talk has been granted!` });
+                        interaction.reply({ content: `<@${id}> is now allowed to use the bot!` });
+                    } catch(e) {}
+                }
+                if (params[1] == 'block') {
+                    const id = params[2];
+                    const user = await bot.users.fetch(id);
+                    if (users.allowed.includes(id))
+                        users.allowed.splice(users.allowed.indexOf(id), 1);
+                    users.blocked.push(id);
+                    log(`User ${user.username}#${user.discriminator} was blocked from using the bot (via button)`);
+                    writeUsers();
+                    try {
+                        user.send({ content: `Your request to talk has been denied. Future requests will be ignored.` });
+                        interaction.reply({ content: `<@${id}> is now blocked from using the bot! Their future requests to use it will be ignored.` });
+                    } catch(e) {}
                 }
             }
             if (params[0] == 'msg') {

@@ -14,6 +14,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Match HTTP logs to the rest of the logs
 - Create log files
 - Add config schema
+- Add block button to usage requests
 
 ## 2023-03-18
 - Add timestamps and colour to logs
