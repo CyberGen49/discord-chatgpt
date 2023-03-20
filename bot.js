@@ -95,7 +95,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             };
             if (allowedMentions) data.allowedMentions = allowedMentions;
             const newMsg = await replyMethod(data);
-            log(state, `Sent response, message ID ${newMsg.id}`);
+            log(state, `Response message ${newMsg.id} sent`);
             if (shouldSendTextFile)
                 fs.rmSync(textFileName);
             return newMsg;
@@ -176,11 +176,10 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             }, {
                 headers: { Authorization: `Bearer ${config.openai.secret}` },
                 validateStatus: status => true,
-                timeout: 1000*90
+                timeout: 1000*120
             });
             if (!res.data || res.data.error) {
-                log(state, `OpenAI request failed:`, res.data || '[No response data]');
-                return res.data.error ? { error: res.data.error } : null;
+                throw new Error(`OpenAI responded with an error: ${res?.data?.error || '[No error provided]'}`);
             }
             const gpt = {
                 reply: res?.data?.choices[0].message.content || null,
@@ -194,7 +193,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             return gpt;
         } catch (error) {
             log(state, error);
-            return null;
+            return error;
         }
     };
     await sendTyping();
@@ -306,6 +305,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     }
     db.close();
     userIsGenerating[msg.author.id] = false;
+    log(state, `Interaction took ${((Date.now()-now)/1000).toFixed(2)} seconds`);
 });
 bot.on('messageDelete', async msg => {
     if (msg.author.bot) return;
