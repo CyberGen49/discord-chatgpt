@@ -289,12 +289,12 @@ bot.on('messageDelete', async msg => {
 });
 bot.on('messageUpdate', async(msgOld, msg) => {
     if (msg.author.bot) return;
-    log(`Message ${msg.id} was edited`);
     const db = sqlite3('./main.db');
     const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
     if (!entry) return;
     const response = await msg.channel.messages.fetch(entry.output_msg_id);
     if (!response) return;
+    log(`Message ${msg.id} was edited`);
     bot.emit('messageCreate', msg, response);
     db.close();
 });
@@ -453,6 +453,36 @@ const commands = {
                 log(`${interaction.user.username}#${interaction.user.discriminator} wiped the allow/block list`);
                 writeUsers();
                 interaction.editReply(`The list of allowed and blocked users has been wiped. The \`config.public_usage\` option will now apply to all users.`);
+            },
+            list: () => {
+                interaction.editReply({
+                    embeds: [
+                        new Discord.EmbedBuilder()
+                            .setTitle(`Users`)
+                            .setColor(0x3789c8)
+                            .setDescription(`The \`config.public_usage\` option will apply to all users not listed here.`)
+                            .addFields([
+                                {
+                                    name: `Allowed`,
+                                    value: (() => {
+                                        if (users.allowed.length == 0)
+                                            return [ `*None*` ];
+                                        return users.allowed.map(id => `<@${id}>`).join('\n');
+                                    })().join(', '),
+                                    inline: true
+                                },
+                                {
+                                    name: `Blocked`,
+                                    value: (() => {
+                                        if (users.blocked.length == 0)
+                                            return [ `*None*` ];
+                                        return users.blocked.map(id => `<@${id}>`).join('\n');
+                                    })().join(', '),
+                                    inline: true
+                                }
+                            ])
+                    ]
+                });
             }
         };
         subCommand[interaction.options.getSubcommand()]();

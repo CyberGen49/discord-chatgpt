@@ -4,6 +4,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 ## 2023-03-19
 - Remove axios request timeout
 - Add invite command
+- Add users list command
 
 ## 2023-03-18
 - Add timestamps and colour to logs
