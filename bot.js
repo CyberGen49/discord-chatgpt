@@ -357,7 +357,8 @@ const commands = {
                     value: [
                         `${totalMyInteractions.toLocaleString()} messages`,
                         `${totalMyTokens.toLocaleString()} tokens`,
-                        `\$${totalMyCost.toFixed(2)} used`
+                        `\$${totalMyCost.toFixed(2)} used`,
+                        `${Math.round((totalMyTokens/totalTokens)*100)}% of total`
                     ].join('\n'),
                     inline: true
                 },
@@ -366,7 +367,8 @@ const commands = {
                     value: [
                         `${monthMyInteractions.toLocaleString()} messages`,
                         `${monthMyTokens.toLocaleString()} tokens`,
-                        `\$${monthMyCost.toFixed(2)} used`
+                        `\$${monthMyCost.toFixed(2)} used`,
+                        `${Math.round((monthMyTokens/monthTokens)*100)}% of total`
                     ].join('\n'),
                     inline: true
                 }
