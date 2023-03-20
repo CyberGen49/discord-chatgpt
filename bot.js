@@ -22,7 +22,13 @@ const users = fs.existsSync('./users.json') ? require('./users.json') : {
 };
 let inviteUrl = '';
 
-const log = (...args) => console.log(clc.white(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`), ...args);
+const log = (...args) => {
+    const timestamp = `[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`;
+    console.log(clc.white(timestamp), ...args);
+    if (!fs.existsSync('./logs')) fs.mkdirSync('./logs');
+    const logFile = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
+    fs.appendFileSync(logFile, `${timestamp} ${args.join(' ')}\n`.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ''));
+}
 const writeStats = () => {
     fs.writeFileSync('./stats.json', JSON.stringify(stats));
     log(`Updated stats file`);
@@ -610,11 +616,16 @@ setInterval(() => {
 
 if (config.http_server.enabled) {
     const srv = express();
-    srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }));
+    srv.use((req, res, next) => {
+        res.on('finish', () => {
+            log(clc.greenBright(`[${req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress}]`), clc.white(req.method, res.statusCode), req.url);
+        });
+        next();
+    });
     srv.get('/invite', (req, res) => {
         res.redirect(inviteUrl);
     });
-    srv.use((req, res, next) => {
+    srv.use((req, res) => {
         res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
     });
     srv.listen(config.http_server.port, log(`HTTP server listening on port ${config.http_server.port}`));
