@@ -224,7 +224,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             }
         } else if (!msg.guild) {
             const time = existingReply ? existingReply.createdTimestamp : Date.now();
-            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND time_created < ? ORDER BY time_created DESC LIMIT 1`).get(time, msg.channel.id);
+            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND time_created < ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id, time);
             if (lastMsg) {
                 messages = [
                     { role: 'user', content: lastMsg.input },
