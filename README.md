@@ -11,8 +11,10 @@ Conversation history doesn't work by default in servers, but you can reply to an
 
 ### Slash commands
 * `/help`: Outputs some help information.
-* `/stats`: Outputs usage statistics.
-* `/purge`: Purges all of the user's message entries from the database.
+* `/stats [user]`: Outputs usage statistics. If a user is provided, their usage stats will be outputted instead.
+* `/purge`: Purges all of your message entries from the database.
+
+### Owner-only commands
 * `/fullpurge`: Purges all message entries from the database.
 * `/users`: Manages bot access.
     * `/users allow <user>`: Allows a user to use the bot.
