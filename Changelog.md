@@ -2,7 +2,7 @@
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
 ## 2023-03-19
-- Remove axios request timeout
+- Re-set axios request timeout to 90 seconds
 - Add invite command
 - Add `/users list` subcommand
 - Add `/invite` command
