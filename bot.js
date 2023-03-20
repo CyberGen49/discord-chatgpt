@@ -467,7 +467,7 @@ const commands = {
                                     value: (() => {
                                         if (users.allowed.length == 0)
                                             return [ `*None*` ];
-                                        return users.allowed.map(id => `<@${id}>`).join('\n');
+                                        return users.allowed.map(id => `<@${id}>`);
                                     })().join(', '),
                                     inline: true
                                 },
@@ -476,7 +476,7 @@ const commands = {
                                     value: (() => {
                                         if (users.blocked.length == 0)
                                             return [ `*None*` ];
-                                        return users.blocked.map(id => `<@${id}>`).join('\n');
+                                        return users.blocked.map(id => `<@${id}>`);
                                     })().join(', '),
                                     inline: true
                                 }
