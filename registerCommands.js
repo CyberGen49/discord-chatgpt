@@ -22,6 +22,9 @@ async function main() {
             .setName('fullpurge')
             .setDescription('Purge all interactions from the database'),
         new Discord.SlashCommandBuilder()
+            .setName('invite')
+            .setDescription('Get an invitation link for the bot'),
+        new Discord.SlashCommandBuilder()
             .setName('users')
             .setDescription('Manage bot access')
             .addSubcommand(subcmd => subcmd

@@ -1,6 +1,10 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-03-19
+- Remove axios request timeout
+- Add invite command
+
 ## 2023-03-18
 - Add timestamps and colour to logs
 - Make logs more verbose

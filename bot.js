@@ -404,6 +404,14 @@ const commands = {
         interaction.editReply(`Purged ${messages.length} interactions from the database.`);
     },
     /** @type {CommandHandler} */
+    invite: async(interaction) => {
+        log(`${interaction.user.username}#${interaction.user.discriminator} get the invite link`);
+        interaction.reply({
+            content: `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`,
+            ephemeral: true
+        });
+    },
+    /** @type {CommandHandler} */
     users: async(interaction) => {
         await interaction.deferReply({ ephemeral: true });
         if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
