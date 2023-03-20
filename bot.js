@@ -159,7 +159,6 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 max_tokens: config.max_output_tokens
             }, {
                 headers: { Authorization: `Bearer ${config.openai.secret}` },
-                timeout: 1000*30,
                 validateStatus: status => true
             });
             if (!res.data || res.data.error) {
