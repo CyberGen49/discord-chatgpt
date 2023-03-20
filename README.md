@@ -90,4 +90,4 @@ The database contains a single table, `messages`, with the following columns:
 * `output`: The language model's response
 * `count_tokens`: The total number of text tokens that this interaction used
 
-This data is only used for conversation history, so the database can be safely deleted and regenerated at any time. See the `delete_message_days` config option to set up automatic message deletion.
+This data is used for conversation history and regenerating responses. See the `delete_message_days` config option to set up automatic message deletion, and the `/fullpurge` slash command to safely wipe all saved messages.
