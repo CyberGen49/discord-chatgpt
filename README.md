@@ -37,10 +37,6 @@ Conversation history doesn't work by default in servers, but you can reply to an
     1. Go to the "Bot" tab and create a new bot
     1. Copy the bot token and paste it in the `discord.token` config field
     1. Scroll down and make sure "Message content intent" is on
-    1. Go to the "OAuth2" tab, then to "URL Generator"
-    1. Check "Bot", then copy the generated URL
-    1. Open a new tab, paste the URL, and navigate to it
-    1. Follow the instructions to add the bot to your server
 1. Set your Discord user ID in the `discord.owner_id` config field.
 1. Make any other changes to the config file ([see below](#configuration)), then save it.
 1. Create the message database by running `sqlite3 main.db ".read schema.sql".`
@@ -48,8 +44,10 @@ Conversation history doesn't work by default in servers, but you can reply to an
 1. Register the bot's slash commands by running `node registerCommands.js`
 1. Start the bot with `node bot.js`
     * If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes.
-1. If you left `config.public_usage` disabled, use `/users allow` to allow yourself to use the bot.
-1. Try it out by DMing the bot a question!
+1. Once the bot logs in, an invite URL will be logged. Open it and follow the instructions to add the bot to your server.
+1. Try it out by DMing or pinging the bot with a question!
+
+As the owner, you're always allowed to use the bot, but with `config.public_usage` disabled, nobody else will be able to. If a disallowed user tries using the bot, you'll get a DM with a button to allow them. You can also add users manually with the `/users add` command.
 
 ## Configuration
 The main configuration is located in `config.json`:
@@ -75,7 +73,7 @@ The main configuration is located in `config.json`:
 * `ignore_prefixes`: If one of these strings is present at the beginning of a message, the message will be ignored.
 * `show_regenerate_button`: If `true`, a "Regenerate" button will be shown on all language model response messages. Responses can also be regenerated from the "Apps" context menu regardless of this setting.
 * `http_server`
-    * `enabled`: Whether or not to enable the HTTP server. For now, any request to that server is redirected to this GitHub repository.
+    * `enabled`: Whether or not to enable the HTTP server. Requests to `/invite` will redirect to the bot's invite URL, and all other requests will redirect to this GiHub repository.
     * `port`: The port to host the server on, if enabled.
 
 ## Database

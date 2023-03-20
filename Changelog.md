@@ -5,9 +5,12 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Remove axios request timeout
 - Add invite command
 - Add `/users list` subcommand
+- Add `/invite` command
 - Add context menu command for regenerating a response
 - Add "Try again" button on error messages
 - Add config option for showing "Regenerate" button on responses
+- Add `/invite` HTTP redirect
+- Log bot invite URL on login
 
 ## 2023-03-18
 - Add timestamps and colour to logs

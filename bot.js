@@ -20,6 +20,7 @@ const users = fs.existsSync('./users.json') ? require('./users.json') : {
     allowed: [],
     blocked: []
 };
+let inviteUrl = '';
 
 const log = (...args) => console.log(clc.white(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`), ...args);
 const writeStats = () => {
@@ -44,6 +45,8 @@ const bot = new Discord.Client({
 
 bot.once('ready', () => {
     log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
+    inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
+    log(`Invite URL: ${inviteUrl}`);
     const setStatus = () => bot.user.setActivity(config.discord.status.text, {
         type: Discord.ActivityType[config.discord.status.type]
     });
@@ -94,7 +97,8 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             return null;
         }
     }
-    if (!config.public_usage && !users.allowed.includes(msg.author.id)) {
+    const isOwner = msg.author.id === config.discord.owner_id;
+    if (!config.public_usage && !users.allowed.includes(msg.author.id) && !isOwner) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} isn't allowed`);
         const owner = await bot.users.fetch(config.discord.owner_id);
         await owner.send({
@@ -428,7 +432,7 @@ const commands = {
     invite: async(interaction) => {
         log(`${interaction.user.username}#${interaction.user.discriminator} get the invite link`);
         interaction.reply({
-            content: `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`,
+            content: inviteUrl,
             ephemeral: true
         });
     },
@@ -606,7 +610,10 @@ setInterval(() => {
 
 if (config.http_server.enabled) {
     const srv = express();
-    srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }))
+    srv.use(logger({ getIP: req => req.headers['cf-connecting-ip'] }));
+    srv.get('/invite', (req, res) => {
+        res.redirect(inviteUrl);
+    });
     srv.use((req, res, next) => {
         res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
     });
