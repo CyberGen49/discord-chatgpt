@@ -429,7 +429,9 @@ const commands = {
                 log(`${interaction.user.username}#${interaction.user.discriminator} allowed ${user.username}#${user.discriminator} to use the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> can now use the bot!`);
-                user.send({ content: `You've been added to the allow list and can now talk to me!` });
+                try {
+                    user.send({ content: `You've been added to the allow list and can now talk to me!` });
+                } catch(e) {}
             },
             block: () => {
                 const user = interaction.options.getUser('user');
@@ -438,7 +440,9 @@ const commands = {
                 log(`${interaction.user.username}#${interaction.user.discriminator} blocked ${user.username}#${user.discriminator} from using the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is now blocked from using the bot.`);
-                user.send({ content: `You've been blocked from talking to me.` });
+                try {
+                    user.send({ content: `You've been blocked from talking to me.` });
+                } catch(e) {}
             },
             unset: () => {
                 const user = interaction.options.getUser('user');
@@ -460,7 +464,7 @@ const commands = {
                         new Discord.EmbedBuilder()
                             .setTitle(`Users`)
                             .setColor(0x3789c8)
-                            .setDescription(`The \`config.public_usage\` option will apply to all users not listed here.`)
+                            .setDescription(`${config.public_usage ? `All users not blocked here are allowed to use the bot,` : `Only users allowed here are allowed to use the bot,`} as set by \`config.public_usage\`.`)
                             .addFields([
                                 {
                                     name: `Allowed`,

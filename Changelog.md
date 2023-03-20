@@ -4,7 +4,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 ## 2023-03-19
 - Remove axios request timeout
 - Add invite command
-- Add users list command
+- Add `/users list` subcommand
 
 ## 2023-03-18
 - Add timestamps and colour to logs
@@ -23,7 +23,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Message the owner an allow button when a non-allowed user tries using the bot
 - Delete response message when the input message is deleted
 - Regenerate response message when the input message is edited
-* Make bot status configurable
+- Make bot status configurable
 
 ## 2023-03-17
 - Change config structure
