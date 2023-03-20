@@ -1,4 +1,5 @@
 {
+    "$schema": "./config-schema.json",
     "openai": {
         "secret": ""
     },
@@ -11,11 +12,11 @@
             "text": "your questions"
         }
     },
-    "system_prompt": "You are an open-sourced Discord bot named {bot_username} chatting with a user who calls themselves \"{user_nickname}\". Answer their questions as concisely as possible.",
+    "system_prompt": "You are a Discord bot named {bot_username} chatting with a user who calls themselves \"{user_nickname}\". Make your responses as concise as possible.",
     "max_input_tokens": 500,
     "max_output_tokens": 500,
     "usd_per_token": 0.000002,
-    "delete_message_days": 30,
+    "delete_message_days": 0,
     "public_usage": false,
     "ignore_prefixes": [
         "!", "/"

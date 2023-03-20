@@ -1,5 +1,6 @@
 
 const fs = require('fs');
+const path = require('path');
 const sqlite3 = require('better-sqlite3');
 const dayjs = require('dayjs');
 const clc = require('cli-color');
@@ -233,8 +234,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         userIsGenerating[msg.author.id] = true;
         const gpt = await getChatResponse(messages, msg.author);
         if (!gpt || gpt?.error) {
-            //await sendReply(`Something went wrong while contacting OpenAI. Please try again later.${gpt.error ? `\n\`${gpt.error.code}\` ${gpt.error.message}`:''}`);
-            throw new Error(`Bad response from OpenAI, error message sent`);
+            throw new Error(`Bad response from OpenAI: ${gpt.error}`);
         }
         if (existingReply) {
             db.prepare(`UPDATE messages SET input = ?, output = ?, count_tokens = ?`).run(msg.content, gpt.reply, gpt.count_tokens);
@@ -604,6 +604,7 @@ bot.on('interactionCreate', async interaction => {
 bot.login(config.discord.token);
 
 setInterval(() => {
+    if (config.delete_message_days >= 0) return;
     const db = sqlite3('./main.db');
     const messages = db.prepare(`SELECT * FROM messages WHERE time_created < ?`).all((Date.now()-config.delete_message_days*24*60*60*1000));
     for (const message of messages) {
@@ -624,6 +625,10 @@ if (config.http_server.enabled) {
     });
     srv.get('/invite', (req, res) => {
         res.redirect(inviteUrl);
+    });
+    srv.get('/schema', (req, res) => {
+        res.setHeader('Content-Type', 'application/schema+json');
+        res.sendFile(path.join(__dirname, 'config-schema.json'));
     });
     srv.use((req, res) => {
         res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);

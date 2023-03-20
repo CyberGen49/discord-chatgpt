@@ -13,6 +13,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Log bot invite URL on login
 - Match HTTP logs to the rest of the logs
 - Create log files
+- Add config schema
 
 ## 2023-03-18
 - Add timestamps and colour to logs
