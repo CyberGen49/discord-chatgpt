@@ -20,6 +20,7 @@
     "ignore_prefixes": [
         "!", "/"
     ],
+    "show_regenerate_button": false,
     "http_server": {
         "enabled": false,
         "port": 8080

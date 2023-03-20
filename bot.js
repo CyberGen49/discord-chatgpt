@@ -61,7 +61,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     const sendTyping = async() => {
         await msg.channel.sendTyping();
     }
-    const sendReply = async(content, allowedMentions) => {
+    const sendReply = async(content, allowedMentions, components) => {
         try {
             const textFileName = `response-${msg.id}.txt`;
             let shouldSendTextFile = false;
@@ -80,7 +80,8 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             }
             const data = {
                 content: content,
-                files: shouldSendTextFile ? [ textFileName ] : []
+                files: shouldSendTextFile ? [ textFileName ] : [],
+                components: components || []
             };
             if (allowedMentions) data.allowedMentions = allowedMentions;
             const newMsg = await replyMethod(data);
@@ -159,7 +160,8 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 max_tokens: config.max_output_tokens
             }, {
                 headers: { Authorization: `Bearer ${config.openai.secret}` },
-                validateStatus: status => true
+                validateStatus: status => true,
+                timeout: 1000*90
             });
             if (!res.data || res.data.error) {
                 log(state, `OpenAI request failed:`, res.data || '[No response data]');
@@ -259,14 +261,30 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         stats.months[month].users[msg.author.id].tokens += gpt.count_tokens;
         writeStats();
         clearInterval(typingInterval);
-        let outputMsg = await sendReply(gpt.reply);
+        let outputMsg = await sendReply(gpt.reply, null, config.show_regenerate_button ? [
+            new Discord.ActionRowBuilder()
+                .addComponents([
+                    new Discord.ButtonBuilder()
+                        .setStyle(Discord.ButtonStyle.Secondary)
+                        .setCustomId(`msg.generate.${msg.id}`)
+                        .setLabel('Regenerate')
+                ])
+        ] : null);
         if (outputMsg && outputMsg.id) {
             db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
         }
     } catch (error) {
         log(state, `Failed to send message`, error);
         try {
-            await sendReply(`Sorry, something went wrong while replying!`);
+            await sendReply(`Sorry, something went wrong while replying!\n\`\`\`${error}\`\`\``, null, [
+                new Discord.ActionRowBuilder()
+                    .addComponents([
+                        new Discord.ButtonBuilder()
+                            .setStyle(Discord.ButtonStyle.Primary)
+                            .setCustomId(`msg.generate.${msg.id}`)
+                            .setLabel('Try again')
+                    ])
+            ]);
         } catch (error) {
             log(state, `Failed to send error message`, error);
         }
@@ -295,6 +313,7 @@ bot.on('messageUpdate', async(msgOld, msg) => {
     const response = await msg.channel.messages.fetch(entry.output_msg_id);
     if (!response) return;
     log(`Message ${msg.id} was edited`);
+    await msg.edit('...');
     bot.emit('messageCreate', msg, response);
     db.close();
 });
@@ -517,8 +536,57 @@ bot.on('interactionCreate', async interaction => {
                     interaction.reply({ content: `<@${id}> is now allowed to use the bot!` });
                 }
             }
+            if (params[0] == 'msg') {
+                if (params[1] == 'generate') {
+                    const id = params[2];
+                    if (userIsGenerating[interaction.user.id]) {
+                        return interaction.reply({ content: `Wait for the current response to finish first!`, ephemeral: true });
+                    }
+                    const msg = await interaction.channel.messages.fetch(id);
+                    if (!msg) {
+                        return interaction.reply({ content: `The source message no longer exists!`, ephemeral: true });
+                    }
+                    await interaction.reply({
+                        content: `On it!`,
+                        ephemeral: true
+                    });
+                    await interaction.message.edit({
+                        content: '...',
+                        components: []
+                    });
+                    bot.emit('messageCreate', msg, interaction.message);
+                }
+            }
         } catch (error) {
             log(`Error while handling button:`, error);
+        }
+    }
+    if (interaction.isContextMenuCommand()) {
+        try {
+            if (interaction.commandName == 'Regenerate response') {
+                if (bot.user.id !== interaction.targetMessage.author.id) {
+                    return interaction.reply({ content: `This isn't one of my messages!`, ephemeral: true });
+                }
+                if (userIsGenerating[interaction.user.id]) {
+                    return interaction.reply({ content: `Wait for the current response to finish first!`, ephemeral: true });
+                }
+                const db = sqlite3('./main.db');
+                const msg = db.prepare(`SELECT * FROM messages WHERE output_msg_id = ?`).get(interaction.targetMessage.id);
+                if (!msg) {
+                    db.close();
+                    return interaction.reply({ content: `This message either isn't a language model response or can no longer be regenerated.`, ephemeral: true });
+                }
+                const inputMsg = await interaction.channel.messages.fetch(msg.input_msg_id);
+                if (!inputMsg) {
+                    db.close();
+                    return interaction.reply({ content: `The input message no longer exists!`, ephemeral: true });
+                }
+                db.close();
+                await interaction.reply({ content: `On it!`, ephemeral: true });
+                bot.emit('messageCreate', inputMsg, interaction.targetMessage);
+            }
+        } catch (error) {
+            log(`Error while handling context menu:`, error);
         }
     }
 });

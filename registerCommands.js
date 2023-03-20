@@ -56,7 +56,10 @@ async function main() {
                 .setDescription(`Wipe the allow/block list`))
             .addSubcommand(subcmd => subcmd
                 .setName(`list`)
-                .setDescription(`Display the allow/block list`))
+                .setDescription(`Display the allow/block list`)),
+        new Discord.ContextMenuCommandBuilder()
+            .setName(`Regenerate response`)
+            .setType(Discord.ApplicationCommandType.Message)
     ];
     // Register slash commands with Discord
     const api = new Discord.REST({ version: 10 }).setToken(config.discord.token);

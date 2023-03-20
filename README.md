@@ -70,6 +70,7 @@ The main configuration is located in `config.json`:
 * `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database.
 * `public_usage`: If `true`, all users will be able to use the bot by default. If `false`, only users allowed with `/users allow` will be able to use the bot.
 * `ignore_prefixes`: If one of these strings is present at the beginning of a message, the message will be ignored.
+* `show_regenerate_button`: If `true`, a "Regenerate" button will be shown on all language model response messages. Responses can also be regenerated from the "Apps" context menu regardless of this setting.
 * `http_server`
     * `enabled`: Whether or not to enable the HTTP server. For now, any request to that server is redirected to this GitHub repository.
     * `port`: The port to host the server on, if enabled.
