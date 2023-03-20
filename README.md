@@ -19,6 +19,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
     * `/users block <user>`: Blocks a user from using the bot.
     * `/users unset <user>`: Removes a user from the allow/block list.
     * `/users wipe`: Wipes the allow/block list.
+    * `/users list`: Displays the list of allowed and blocked users.
 
 ## Running the bot yourself
 1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
