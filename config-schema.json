@@ -3,7 +3,7 @@
     "properties": {
         "openai": {
             "type": "object",
-            "description": "OpenAI settings",
+            "description": "OpenAI API settings.",
             "properties": {
                 "secret": {
                     "type": "string",
@@ -13,7 +13,7 @@
         },
         "discord": {
             "type": "object",
-            "description": "Discord bot settings",
+            "description": "Discord bot settings.",
             "properties": {
                 "id": {
                     "type": "string",
@@ -51,13 +51,14 @@
         "starter_messages": {
             "type": "array",
             "description": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.",
-            "markdownDescription": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.\n\nMessages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.\n\nThere are also a handful of placeholders you can use in message content to customize the message for each interaction:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n",
+            "markdownDescription": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.\n\nMessages with a `role` of `system` are meant to instruct the model, while messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.",
             "items": {
                 "type": "object",
                 "properties": {
                     "role": {
                         "type": "string",
-                        "description": "The role of the message.",
+                        "description": "The role of the message. Generally, you should only use system messages.",
+                        "markdownDescription": "The role of the message. Generally, you should only use `system` messages.",
                         "enum": [
                             "system",
                             "assistant",
@@ -78,11 +79,11 @@
         },
         "max_output_tokens": {
             "type": "integer",
-            "description": "The maximum length in text tokens that the language model's response should be."
+            "description": "The maximum length in text tokens that the language model's response should be. Responses exceeding this length will be cut off. Responses exceeding Discord's 2000 character limit will be sent as text files instead."
         },
         "usd_per_token": {
             "type": "number",
-            "description": "The price, in USD, of each text token. This is used to display cost values in the stats command.\nOpenAI normally advertizes prices per 1000 tokens, so be sure to divide by 1000 when setting this value."
+            "description": "The price, in USD, of each text token. This is used to display cost values in the stats command.\nOpenAI normally advertizes prices per 1,000 tokens, so be sure to divide by 1,000 when setting this value."
         },
         "delete_message_days": {
             "type": "number",
@@ -95,7 +96,7 @@
         },
         "ignore_prefixes": {
             "type": "array",
-            "description": "Messages targeting the bot that start with one of these strings will be ignored.",
+            "description": "If a message targeting the bot starts with one of these strings, it'll be ignored.",
             "items": {
                 "type": "string"
             }

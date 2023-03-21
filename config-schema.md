@@ -2,13 +2,13 @@
 Generated automatically from [config-schema.json](./config-schema.json).
 
 ### object `openai`
-OpenAI settings
+OpenAI API settings.
 
 ### string `openai.secret`
 Your OpenAI secret key.
 
 ### object `discord`
-Discord bot settings
+Discord bot settings.
 
 ### string `discord.id`
 Your Discord bot's application ID.
@@ -33,16 +33,10 @@ The text of the status
 ### object[] `starter_messages`
 A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.
 
-Messages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.
-
-There are also a handful of placeholders you can use in message content to customize the message for each interaction:
-* `{bot_username}`: The bot's username
-* `{user_username}`: The user's username
-* `{user_nickname}`: The user's server nickname, or their username if they have no nickname
-
+Messages with a `role` of `system` are meant to instruct the model, while messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.
 
 ### string `starter_messages[].role`
-The role of the message.
+The role of the message. Generally, you should only use `system` messages.
 
 Acceptable values: `system`, `assistant`, `user`
 
@@ -59,12 +53,12 @@ Placeholders:
 The maximum length in text tokens that a user's input can be.
 
 ### integer `max_output_tokens`
-The maximum length in text tokens that the language model's response should be.
+The maximum length in text tokens that the language model's response should be. Responses exceeding this length will be cut off. Responses exceeding Discord's 2000 character limit will be sent as text files instead.
 
 ### number `usd_per_token`
 The price, in USD, of each text token. This is used to display cost values in the stats command.
 
-OpenAI normally advertizes prices per 1000 tokens, so be sure to divide by 1000 when setting this value.
+OpenAI normally advertizes prices per 1,000 tokens, so be sure to divide by 1,000 when setting this value.
 
 ### number `delete_message_days`
 Message entries in the database will be deleted when they reach this many days old. Set to 0 to disable automatic deletion.
@@ -73,7 +67,7 @@ Message entries in the database will be deleted when they reach this many days o
 When `true`, any user will be able to use the bot. When `false`, only users allowed through the users allow command or by request will be able to use the bot.
 
 ### string[] `ignore_prefixes`
-Messages targeting the bot that start with one of these strings will be ignored.
+If a message targeting the bot starts with one of these strings, it'll be ignored.
 
 ### boolean `show_regenerate_button`
 When `true`, a "Regenerate" button will be included in all language model responses. Responses can also be regenerated from the Apps menu, regardless of this setting.
