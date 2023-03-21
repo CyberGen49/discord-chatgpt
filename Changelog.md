@@ -4,6 +4,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 ## 2023-03-20
 - Add the ability to configure multiple system messages
 - Make sure the language model isn't able to mention any users, roles, or everyone
+- Parse config schema into Markdown and move config documentation into its own file
 
 ## 2023-03-19
 - Re-set axios request timeout to 120 seconds
