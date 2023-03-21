@@ -17,7 +17,7 @@ Your Discord bot's application ID.
 Your Discord bot token.
 
 ### string `discord.owner_id`
-Your Discord user ID.
+Your Discord user ID. Only this user is allowed to manage user access, purge the entire database, etc. This user is also always granted access to the bot.
 
 ### object `discord.status`
 The Discord bot's status.
