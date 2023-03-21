@@ -330,7 +330,7 @@ bot.on('messageUpdate', async(msgOld, msg) => {
     const response = await msg.channel.messages.fetch(entry.output_msg_id);
     if (!response) return;
     log(`Message ${msg.id} was edited`);
-    await msg.edit('...');
+    await response.edit('...');
     bot.emit('messageCreate', msg, response);
     db.close();
 });
