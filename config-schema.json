@@ -95,7 +95,7 @@
         },
         "ignore_prefixes": {
             "type": "array",
-            "description": "Messages targeting the bot starting with any of these strings will be ignored.",
+            "description": "Messages targeting the bot that start with one of these strings will be ignored.",
             "items": {
                 "type": "string"
             }

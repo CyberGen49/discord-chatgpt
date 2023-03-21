@@ -50,31 +50,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 As the owner, you're always allowed to use the bot, but with `config.public_usage` disabled, nobody else will be able to. If a disallowed user tries using the bot, you'll get a DM with a button to allow them. You can also add users manually with the `/users add` command.
 
 ## Configuration
-The main configuration is located in `config.json`:
-
-* `openai`
-    * `secret`: Your OpenAI secret key.
-* `discord`
-    * `id`: Your Discord application's ID.
-    * `token`: Your Discord bot's token.
-    * `owner_id`: Your Discord user ID. Users will be told to contact this user if they aren't allowed to use the bot.
-    * `status`:
-        * `type`: The status prefix. Can be `Playing`, `Watching`, or `Listening`.
-        * `text`: The status text.
-* `system_prompt`: A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model. Messages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input. There are a handful of placeholders you can use to customize the message for each interaction:
-    * `{bot_username}`: The bot's username
-    * `{user_username}`: The user's username
-    * `{user_nickname}`: The user's server nickname, or their username otherwise
-* `max_input_tokens`: The max size of input messages in [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
-* `max_output_tokens`: The max size of the language model's responses in text tokens
-* `usd_per_token`: The cost, in US dollars, of a single text token. This is used to calculate the cost values shown in the `/stats` command.
-* `delete_message_days`: Message entries older than this number of days will be automatically deleted from the database.
-* `public_usage`: If `true`, all users will be able to use the bot by default. If `false`, only users allowed with `/users allow` will be able to use the bot.
-* `ignore_prefixes`: If one of these strings is present at the beginning of a message, the message will be ignored.
-* `show_regenerate_button`: If `true`, a "Regenerate" button will be shown on all language model response messages. Responses can also be regenerated from the "Apps" context menu regardless of this setting.
-* `http_server`
-    * `enabled`: Whether or not to enable the HTTP server. Requests to `/invite` will redirect to the bot's invite URL, and all other requests will redirect to this GiHub repository.
-    * `port`: The port to host the server on, if enabled.
+Documentation for `config.json` has been moved to [./config-schema.md].
 
 ## Database
 The bot stores every message with its accompanying response in the database we generated during setup.
