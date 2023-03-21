@@ -1,6 +1,10 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-03-20
+- Add the ability to configure multiple system messages
+- Make sure the language model isn't able to mention any users, roles, or everyone
+
 ## 2023-03-19
 - Re-set axios request timeout to 120 seconds
 - Add invite command

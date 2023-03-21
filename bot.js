@@ -154,9 +154,12 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id)?.displayName : msg.author.username,
             bot_username: bot.user.username
         }
-        const systemPrompt = config.system_prompt.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
+        const starterMessages = [ ...config.starter_messages ];
+        for (const msg of starterMessages) {
+            msg.content = msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
+        }
         messages = [
-            { role: 'system', content: systemPrompt },
+            ...starterMessages,
             ...messages
         ];
         let tentativeTokenCount = 0;
@@ -177,7 +180,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 timeout: 1000*120
             });
             if (!res.data || res.data.error) {
-                throw new Error(`OpenAI responded with an error: ${res?.data?.error || '[No error provided]'}`);
+                throw new Error(`OpenAI responded with an error: ${JSON.stringify(res?.data?.error)}`);
             }
             const gpt = {
                 reply: res?.data?.choices[0].message.content || null,
@@ -272,7 +275,9 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         stats.months[month].users[msg.author.id].tokens += gpt.count_tokens;
         writeStats();
         clearInterval(typingInterval);
-        let outputMsg = await sendReply(gpt.reply, null, config.show_regenerate_button ? [
+        let outputMsg = await sendReply(gpt.reply, {
+            users: [], roles: [], everyone: false
+        }, config.show_regenerate_button ? [
             new Discord.ActionRowBuilder()
                 .addComponents([
                     new Discord.ButtonBuilder()

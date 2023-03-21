@@ -12,7 +12,15 @@
             "text": "your questions"
         }
     },
-    "system_prompt": "You are a Discord bot named {bot_username} chatting with a user who calls themselves \"{user_nickname}\". Make your responses as concise as possible.",
+    "starter_messages": [
+        {
+            "role": "system",
+            "content": "You are a Discord bot named {bot_username}. Make your responses as concise as possible."
+        }, {
+            "role": "system",
+            "content": "The person you're chatting with calls themselves \"{user_nickname}\"."
+        }
+    ],
     "max_input_tokens": 500,
     "max_output_tokens": 500,
     "usd_per_token": 0.000002,
