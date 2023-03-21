@@ -61,11 +61,7 @@ The main configuration is located in `config.json`:
     * `status`:
         * `type`: The status prefix. Can be `Playing`, `Watching`, or `Listening`.
         * `text`: The status text.
-* `system_prompt`: A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.
- 
- Messages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.
- 
- There are a handful of placeholders you can use to customize the message for each interaction:
+* `system_prompt`: A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model. Messages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input. There are a handful of placeholders you can use to customize the message for each interaction:
     * `{bot_username}`: The bot's username
     * `{user_username}`: The user's username
     * `{user_nickname}`: The user's server nickname, or their username otherwise
