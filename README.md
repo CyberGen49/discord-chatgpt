@@ -30,7 +30,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 1. Run `npm install`
 1. Rename `config-template.json` to `config.json` and open it
 1. [Generate an OpenAI secret key](https://platform.openai.com/account/api-keys) and paste it in the `openai.secret` config field
-    * Note: Use of the Chat API isn't free. At the time of writing, it costs $0.002 for every 1000 [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them). The token count of a request includes both the user's input, the model's output, and any conversational context provided.
+    * Note: Use of the Chat API isn't free. At the time of writing, it costs $0.002 for every 1000 [text tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them). The token count of a request includes any configured starter messages, any conversational context, the user's input, and the model's output.
 1. [Create a new Discord application](https://discord.com/developers/applications)
     1. Set its name, description, and picture
     1. Copy the Application ID and paste it in the `discord.id` config field
@@ -38,10 +38,10 @@ Conversation history doesn't work by default in servers, but you can reply to an
     1. Copy the bot token and paste it in the `discord.token` config field
     1. Scroll down and make sure "Message content intent" is on
 1. Set your Discord user ID in the `discord.owner_id` config field.
-1. Make any other changes to the config file ([see below](#configuration)), then save it.
+1. Make any other changes to the [config file](./config-schema.md), then save it.
 1. Create the message database by running `sqlite3 main.db ".read schema.sql".`
     * This is a required step. See [Database](#database) for details.
-1. Register the bot's slash commands by running `node registerCommands.js`
+1. Register the bot's slash and context menu commands by running `node registerCommands.js`
 1. Start the bot with `node bot.js`
     * If you're on a Unix operating system, run `sh bot.sh` to start the bot and auto-restart it if it crashes.
 1. Once the bot logs in, an invite URL will be logged. Open it and follow the instructions to add the bot to your server.
