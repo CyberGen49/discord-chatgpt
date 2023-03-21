@@ -8,7 +8,6 @@ const tokens = require('gpt-3-encoder');
 const axios = require('axios');
 const Discord = require('discord.js');
 const express = require('express');
-const logger = require('cyber-express-logger');
 const config = require('./config.json');
 
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
@@ -32,11 +31,9 @@ const log = (...args) => {
 }
 const writeStats = () => {
     fs.writeFileSync('./stats.json', JSON.stringify(stats));
-    log(`Updated stats file`);
 }
 const writeUsers = () => {
     fs.writeFileSync('./users.json', JSON.stringify(users));
-    log(`Updated users file`);
 }
 const countTokens = text => tokens.encode(text).length;
 
@@ -150,6 +147,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a message that exceeded config.max_input_tokens`);
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
+    log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a valid message`);
     const getChatResponse = async(messages = []) => {
         const placeholders = {
             user_username: msg.author.username,
@@ -193,7 +191,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             return gpt;
         } catch (error) {
             log(state, error);
-            return error;
+            return { error: error };
         }
     };
     await sendTyping();
