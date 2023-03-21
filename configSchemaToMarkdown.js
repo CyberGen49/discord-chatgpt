@@ -13,11 +13,8 @@ const addEntries = (properties, propNameParent) => {
     }
 };
 const addEntry = (propName, data) => {
-    let type = data.type;
-    if (data.type == 'array') {
-        type = `${data.items.type}[]`;
-    }
-    md.push(`#### ${type} \`${propName}\``);
+    const type = (data.type == 'array') ? `${data.items.type}[]` : data.type;
+    md.push(`### ${type} \`${propName}\``);
     md.push(data.markdownDescription || (data.description || '').replace(/\n/g, '\n\n'));
     if (data.enum) {
         md.push(`\nAcceptable values: ${data.enum.map(value => `\`${value}\``).join(', ')}`);
