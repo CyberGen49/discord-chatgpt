@@ -50,7 +50,7 @@ Conversation history doesn't work by default in servers, but you can reply to an
 As the owner, you're always allowed to use the bot, but with `config.public_usage` disabled, nobody else will be able to. If a disallowed user tries using the bot, you'll get a DM with a button to allow them. You can also add users manually with the `/users add` command.
 
 ## Configuration
-Documentation for `config.json` has been moved to [./config-schema.md].
+Documentation for `config.json` has been moved to [config-schema.md](./config-schema.md).
 
 ## Database
 The bot stores every message with its accompanying response in the database we generated during setup.
