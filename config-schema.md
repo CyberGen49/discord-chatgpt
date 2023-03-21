@@ -23,12 +23,12 @@ Your Discord user ID. Only this user is allowed to manage user access, purge the
 The Discord bot's status.
 
 ### string `discord.status.type`
-The status type/prefix
+The status type/prefix.
 
 Acceptable values: `Playing`, `Listening`, `Watching`
 
 ### string `discord.status.text`
-The text of the status
+The text of the status.
 
 ### object[] `starter_messages`
 A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.
@@ -73,7 +73,7 @@ If a message targeting the bot starts with one of these strings, it'll be ignore
 When `true`, a "Regenerate" button will be included in all language model responses. Responses can also be regenerated from the Apps menu, regardless of this setting.
 
 ### object `http_server`
-HTTP server settings
+HTTP server settings.
 
 ### boolean `http_server.enabled`
 Whether or not to enable the HTTP server. Requests to /invite will redirect to the bot's invite URL, and all other requests will redirect to the GiHub repository.

@@ -33,7 +33,7 @@
                     "properties": {
                         "type": {
                             "type": "string",
-                            "description": "The status type/prefix",
+                            "description": "The status type/prefix.",
                             "enum": [
                                 "Playing",
                                 "Listening",
@@ -42,7 +42,7 @@
                         },
                         "text": {
                             "type": "string",
-                            "description": "The text of the status"
+                            "description": "The text of the status."
                         }
                     }
                 }
@@ -108,7 +108,7 @@
         },
         "http_server": {
             "type": "object",
-            "description": "HTTP server settings",
+            "description": "HTTP server settings.",
             "properties": {
                 "enabled": {
                     "type": "boolean",
