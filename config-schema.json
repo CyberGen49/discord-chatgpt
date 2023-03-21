@@ -51,7 +51,7 @@
         "starter_messages": {
             "type": "array",
             "description": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.",
-            "markdownDescription": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.\n\nMessages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.\n\nThere are a handful of placeholders you can use to customize the message for each interaction:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n",
+            "markdownDescription": "A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.\n\nMessages with a `role` of `system` are meant to instruct the model, and messages with `role`s of `assistant` or `user` can be used to start a conversation without the user's input.\n\nThere are also a handful of placeholders you can use in message content to customize the message for each interaction:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n",
             "items": {
                 "type": "object",
                 "properties": {
@@ -66,7 +66,8 @@
                     },
                     "content": {
                         "type": "string",
-                        "description": "The content of the message."
+                        "description": "The content of the message.",
+                        "markdownDescription": "The content of the message.\n\nPlaceholders:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n"
                     }
                 }
             }
