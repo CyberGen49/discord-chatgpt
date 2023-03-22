@@ -29,7 +29,7 @@
                 },
                 "status": {
                     "type": "object",
-                    "description": "The Discord bot's status.",
+                    "description": "The Discord bot's status. This will be updated every 5 minutes.",
                     "properties": {
                         "type": {
                             "type": "string",
@@ -42,7 +42,8 @@
                         },
                         "text": {
                             "type": "string",
-                            "description": "The text of the status."
+                            "description": "The text of the status.",
+                            "markdownDescription": "The text of the status.\n\nPlaceholders:\n* `{tokens_total}`: The total number of tokens used.\n* `{tokens_month}`: The number of tokens used this month.\n* `{price_total}`: The total amount of money spent, in USD.\n* `{price_month}`: The amount of money spent this month, in USD."
                         }
                     }
                 }

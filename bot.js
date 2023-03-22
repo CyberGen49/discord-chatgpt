@@ -51,10 +51,19 @@ bot.once('ready', () => {
     log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
     inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
     log(`Invite URL: ${inviteUrl}`);
-    const setStatus = () => bot.user.setActivity(config.discord.status.text, {
-        type: Discord.ActivityType[config.discord.status.type]
-    });
-    setInterval(setStatus, (1000*60*60));
+    const setStatus = () => {
+        const placeholders = {
+            tokens_total: stats.totalTokens.toLocaleString(),
+            tokens_month: stats.months[dayjs().format('YYYY-MM')].totalTokens.toLocaleString() || 0,
+            price_total: (stats.totalTokens * config.usd_per_token).toFixed(2),
+            price_month: ((stats.months[dayjs().format('YYYY-MM')].totalTokens || 0) * config.usd_per_token).toFixed(2)
+        };
+        const text = config.discord.status.text.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
+        bot.user.setActivity(text, {
+            type: Discord.ActivityType[config.discord.status.type]
+        });
+    }
+    setInterval(setStatus, (1000*60*5));
     setStatus();
 });
 const userIsGenerating = {};
@@ -578,6 +587,7 @@ bot.on('interactionCreate', async interaction => {
                     if (!msg) {
                         return interaction.reply({ content: `The source message no longer exists!`, ephemeral: true });
                     }
+                    log(`User ${interaction.user.username}#${interaction.user.discriminator} requested message ${interaction.message.id} to be regenerated`);
                     await interaction.reply({
                         content: `On it!`,
                         ephemeral: true

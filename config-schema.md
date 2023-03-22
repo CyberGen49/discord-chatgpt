@@ -20,7 +20,7 @@ Your Discord bot token.
 Your Discord user ID. Only this user is allowed to manage user access, purge the entire database, etc. This user is also always granted access to the bot.
 
 ### object `discord.status`
-The Discord bot's status.
+The Discord bot's status. This will be updated every 5 minutes.
 
 ### string `discord.status.type`
 The status type/prefix.
@@ -29,6 +29,12 @@ Acceptable values: `Playing`, `Listening`, `Watching`
 
 ### string `discord.status.text`
 The text of the status.
+
+Placeholders:
+* `{tokens_total}`: The total number of tokens used.
+* `{tokens_month}`: The number of tokens used this month.
+* `{price_total}`: The total amount of money spent, in USD.
+* `{price_month}`: The amount of money spent this month, in USD.
 
 ### object[] `starter_messages`
 A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.
