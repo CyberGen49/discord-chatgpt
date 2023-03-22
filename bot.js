@@ -66,7 +66,8 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     if (msg.author.bot) return;
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
     const sendTyping = async() => {
-        await msg.channel.sendTyping();
+        if (!existingReply)
+            await msg.channel.sendTyping();
     }
     const sendReply = async(content, allowedMentions, components) => {
         try {
@@ -151,7 +152,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     const getChatResponse = async(messages = []) => {
         const placeholders = {
             user_username: msg.author.username,
-            user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id)?.displayName : msg.author.username,
+            user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id).displayName : msg.author.username,
             bot_username: bot.user.username
         }
         const starterMessages = [ ...config.starter_messages ];
@@ -241,7 +242,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             throw new Error(`Bad response from OpenAI: ${gpt.error}`);
         }
         if (existingReply) {
-            db.prepare(`UPDATE messages SET input = ?, output = ?, count_tokens = ?`).run(msg.content, gpt.reply, gpt.count_tokens);
+            db.prepare(`UPDATE messages SET input = ?, output = ?, count_tokens = ? WHERE input_msg_id = ?`).run(msg.content, gpt.reply, gpt.count_tokens, msg.id);
         } else {
             db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
         }
@@ -613,6 +614,7 @@ bot.on('interactionCreate', async interaction => {
                     return interaction.reply({ content: `The input message no longer exists!`, ephemeral: true });
                 }
                 db.close();
+                await interaction.targetMessage.edit('...');
                 await interaction.reply({ content: `On it!`, ephemeral: true });
                 bot.emit('messageCreate', inputMsg, interaction.targetMessage);
             }
