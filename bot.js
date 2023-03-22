@@ -47,19 +47,21 @@ const bot = new Discord.Client({
     partials: [ Discord.Partials.Channel, Discord.Partials.Message ]
 });
 
-let lastStatusSet = 0;
+let setStatusTimeout;
 const setStatus = () => {
-    const placeholders = {
-        tokens_total: stats.totalTokens.toLocaleString(),
-        tokens_month: stats.months[dayjs().format('YYYY-MM')].totalTokens.toLocaleString() || 0,
-        price_total: (stats.totalTokens * config.usd_per_token).toFixed(2),
-        price_month: ((stats.months[dayjs().format('YYYY-MM')].totalTokens || 0) * config.usd_per_token).toFixed(2)
-    };
-    const text = config.discord.status.text.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
-    bot.user.setActivity(text, {
-        type: Discord.ActivityType[config.discord.status.type]
-    });
-    lastStatusSet = Date.now();
+    clearTimeout(setStatusTimeout);
+    setStatusTimeout = setTimeout(() => {
+        const placeholders = {
+            tokens_total: stats.totalTokens.toLocaleString(),
+            tokens_month: stats.months[dayjs().format('YYYY-MM')].totalTokens.toLocaleString() || 0,
+            price_total: (stats.totalTokens * config.usd_per_token).toFixed(2),
+            price_month: ((stats.months[dayjs().format('YYYY-MM')].totalTokens || 0) * config.usd_per_token).toFixed(2)
+        };
+        const text = config.discord.status.text.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
+        bot.user.setActivity(text, {
+            type: Discord.ActivityType[config.discord.status.type]
+        });
+    }, 1000*5);
 }
 bot.once('ready', () => {
     log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
