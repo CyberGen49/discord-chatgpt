@@ -109,7 +109,7 @@
         },
         "request_timeout": {
             "type": "integer",
-            "description": "The number of seconds after which an incomplete request to OpenAI should be terminated."
+            "description": "The number of seconds after which an incomplete request to OpenAI should be terminated. Keep in mind that you may still be charged for requests that time out."
         },
         "request_tries": {
             "type": "integer",
