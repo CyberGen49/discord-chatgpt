@@ -78,6 +78,12 @@ If a message targeting the bot starts with one of these strings, it'll be ignore
 ### boolean `show_regenerate_button`
 When `true`, a "Regenerate" button will be included in all language model responses. Responses can also be regenerated from the Apps menu, regardless of this setting.
 
+### int `request_timeout`
+The number of seconds after which a incomplete request to OpenAI should be terminated.
+
+### int `request_tries`
+The number times an OpenAI request should be retried if it fails or times out.
+
 ### object `http_server`
 HTTP server settings.
 
