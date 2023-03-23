@@ -225,18 +225,36 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         tentativeTokenCount = countTokens(JSON.stringify(messages));
         try {
             log(state, `Making OpenAI request of approx. ${tentativeTokenCount} tokens`);
-            const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-                model: 'gpt-3.5-turbo',
-                messages: messages,
-                max_tokens: config.max_output_tokens
-            }, {
-                headers: { Authorization: `Bearer ${config.openai.secret}` },
-                validateStatus: status => true,
-                timeout: 1000*config.request_timeout
-            });
-            if (!res.data || res.data.error) {
-                throw new Error(`OpenAI responded with an error: ${JSON.stringify(res?.data?.error)}`);
-            }
+            const res = await (async() => {
+                let tries = 0;
+                let res = null;
+                while (true) {
+                    tries++;
+                    try {
+                        res = await axios.post('https://api.openai.com/v1/chat/completions', {
+                            model: 'gpt-3.5-turbo',
+                            messages: messages,
+                            max_tokens: config.max_output_tokens
+                        }, {
+                            headers: { Authorization: `Bearer ${config.openai.secret}` },
+                            validateStatus: status => true,
+                            timeout: 1000*config.request_timeout
+                        });
+                        if (!res.data) {
+                            throw new Error(`No data received!`);
+                        }
+                        if (res.data.error) {
+                            throw new Error(`OpenAI responded with an error: ${JSON.stringify(res?.data?.error)}`);
+                        }
+                    } catch (error) {
+                        if (tries >= config.request_tries)
+                            throw new Error(error);
+                    }
+                    if ((res && !res?.error) || (tries >= config.request_tries))
+                        return res;
+                    log(state, `Request failed! Retrying...`);
+                }
+            })();
             const gpt = {
                 reply: res?.data?.choices[0].message.content || null,
                 count_tokens: res?.data?.usage.total_tokens
@@ -248,7 +266,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
             return gpt;
         } catch (error) {
-            log(state, error);
+            log(state, `${error}`);
             return { error: error };
         }
     };
@@ -261,21 +279,9 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
         }
         const messages = await getMessagesObject(msg);
-        const gpt = await (async() => {
-            let tries = 0;
-            let result = null;
-            while (tries < config.request_tries) {
-                try {
-                    result = await getChatResponse(messages);
-                } catch (error) {}
-                if (result && !result?.error) return result;
-                log(`Failed! Retrying...`);
-                tries++;
-            }
-            return result;
-        })();
-        if (!gpt || gpt?.error) {
-            throw new Error(`Bad response from OpenAI: ${gpt.error}`);
+        const gpt = await getChatResponse(messages);
+        if (!gpt || gpt?.error || !gpt?.reply) {
+            throw new Error(`Request failed: ${gpt.error}`);
         }
         messages.push({ role: 'assistant', content: gpt.reply });
         db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, messages, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, JSON.stringify(messages), gpt.count_tokens);
