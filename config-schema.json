@@ -108,11 +108,11 @@
             "markdownDescription": "When `true`, a \"Regenerate\" button will be included in all language model responses. Responses can also be regenerated from the Apps menu, regardless of this setting."
         },
         "request_timeout": {
-            "type": "int",
-            "description": "The number of seconds after which a incomplete request to OpenAI should be terminated."
+            "type": "integer",
+            "description": "The number of seconds after which an incomplete request to OpenAI should be terminated."
         },
         "request_tries": {
-            "type": "int",
+            "type": "integer",
             "description": "The number times an OpenAI request should be retried if it fails or times out."
         },
         "http_server": {
