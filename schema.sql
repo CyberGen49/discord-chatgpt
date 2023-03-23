@@ -6,5 +6,6 @@ CREATE TABLE IF NOT EXISTS "messages" (
 	"output_msg_id"	TEXT,
 	"input"	TEXT NOT NULL,
 	"output"	TEXT NOT NULL,
+	"messages"	TEXT NOT NULL,
 	"count_tokens"	INTEGER NOT NULL
 );

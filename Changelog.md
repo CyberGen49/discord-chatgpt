@@ -1,6 +1,12 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-03-22
+- Fix placeholder replacements
+- Store entire messages object in database
+- Add context menu command for dumping a message from the database
+- Fix context when editing/regenerating messages
+
 ## 2023-03-21
 - Add placeholders to status text
 

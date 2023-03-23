@@ -59,6 +59,9 @@ async function main() {
                 .setDescription(`Display the allow/block list`)),
         new Discord.ContextMenuCommandBuilder()
             .setName(`Regenerate response`)
+            .setType(Discord.ApplicationCommandType.Message),
+        new Discord.ContextMenuCommandBuilder()
+            .setName(`Dump interaction`)
             .setType(Discord.ApplicationCommandType.Message)
     ];
     // Register slash commands with Discord

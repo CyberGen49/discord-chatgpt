@@ -162,20 +162,61 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
     log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a valid message`);
-    const getChatResponse = async(messages = []) => {
+    const getMessagesObject = async(msg) => {
+        let messages = [
+            { role: 'user', content: input }
+        ];
+        if (msg.type == Discord.MessageType.Reply) {
+            const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
+            const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
+            messages = [
+                { role: msgType, content: srcMsg.content },
+                ...messages
+            ];
+            if (msgType == 'assistant') {
+                const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
+                if (lastMsg) {
+                    messages = [
+                        { role: 'user', content: lastMsg.input },
+                        ...messages
+                    ];
+                    log(state, `Using replied-to saved input and output as context`);
+                } else {
+                    log(state, `Using replied-to user message as context (couldn't find saved message)`);
+                }
+            } else {
+                log(state, `Using replied-to user message as context`);
+            }
+        } else if (!msg.guild) {
+            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
+            if (lastMsg) {
+                messages = [
+                    { role: 'user', content: lastMsg.input },
+                    { role: 'assistant', content: lastMsg.output },
+                    ...messages
+                ];
+                log(state, `Using previous input and output as context`);
+            }
+        }
         const placeholders = {
             user_username: msg.author.username,
             user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id).displayName : msg.author.username,
             bot_username: bot.user.username
         }
-        const starterMessages = [ ...config.starter_messages ];
-        for (const msg of starterMessages) {
-            msg.content = msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
+        const starterMessages = [];
+        for (const msg of config.starter_messages) {
+            starterMessages.push({
+                role: msg.role,
+                content: msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key])
+            });
         }
         messages = [
             ...starterMessages,
             ...messages
-        ];
+        ]
+        return messages;
+    };
+    const getChatResponse = async(messages = []) => {
         let tentativeTokenCount = 0;
         for (const message of messages) {
             const tokenCount = countTokens(message.content);
@@ -215,50 +256,17 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     const db = sqlite3('./main.db');
     const typingInterval = setInterval(sendTyping, 3000);
     try {
-        let messages = [{ role: 'user', content: input }];
-        if (msg.type == Discord.MessageType.Reply) {
-            const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
-            const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
-            messages = [
-                { role: msgType, content: srcMsg.content },
-                ...messages
-            ];
-            if (msgType == 'assistant') {
-                const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
-                if (lastMsg) {
-                    messages = [
-                        { role: 'user', content: lastMsg.input },
-                        ...messages
-                    ];
-                    log(state, `Using replied-to saved input and output as context`);
-                } else {
-                    log(state, `Using replied-to user message as context (couldn't find saved message)`);
-                }
-            } else {
-                log(state, `Using replied-to user message as context`);
-            }
-        } else if (!msg.guild) {
-            const time = existingReply ? existingReply.createdTimestamp : Date.now();
-            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND time_created < ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id, time);
-            if (lastMsg) {
-                messages = [
-                    { role: 'user', content: lastMsg.input },
-                    { role: 'assistant', content: lastMsg.output },
-                    ...messages
-                ];
-                log(state, `Using previous input and output as context`);
-            }
-        }
         userIsGenerating[msg.author.id] = true;
-        const gpt = await getChatResponse(messages, msg.author);
+        if (existingReply) {
+            db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
+        }
+        const messages = await getMessagesObject(msg);
+        const gpt = await getChatResponse(messages);
         if (!gpt || gpt?.error) {
             throw new Error(`Bad response from OpenAI: ${gpt.error}`);
         }
-        if (existingReply) {
-            db.prepare(`UPDATE messages SET input = ?, output = ?, count_tokens = ? WHERE input_msg_id = ?`).run(msg.content, gpt.reply, gpt.count_tokens, msg.id);
-        } else {
-            db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, gpt.count_tokens);
-        }
+        messages.push({ role: 'assistant', content: gpt.reply });
+        db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, messages, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, JSON.stringify(messages), gpt.count_tokens);
         const month = dayjs().format('YYYY-MM');
         // Initialize stats object
         stats.users[msg.author.id] = stats.users[msg.author.id] || {
@@ -609,8 +617,8 @@ bot.on('interactionCreate', async interaction => {
         }
     }
     if (interaction.isContextMenuCommand()) {
-        try {
-            if (interaction.commandName == 'Regenerate response') {
+        const contextMenuCommand = {
+            'Regenerate response': async() => {
                 if (bot.user.id !== interaction.targetMessage.author.id) {
                     return interaction.reply({ content: `This isn't one of my messages!`, ephemeral: true });
                 }
@@ -629,10 +637,31 @@ bot.on('interactionCreate', async interaction => {
                     return interaction.reply({ content: `The input message no longer exists!`, ephemeral: true });
                 }
                 db.close();
+                log(`User ${interaction.user.username}#${interaction.user.discriminator} requested for message ${interaction.targetMessage.id} be regenerated`);
                 await interaction.targetMessage.edit('...');
                 await interaction.reply({ content: `On it!`, ephemeral: true });
                 bot.emit('messageCreate', inputMsg, interaction.targetMessage);
+            },
+            'Dump interaction': async() => {
+                const db = sqlite3('./main.db');
+                const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ? OR output_msg_id = ?`).get(interaction.targetMessage.id, interaction.targetMessage.id);
+                db.close();
+                if (!entry) {
+                    return interaction.reply({ content: `This message isn't in the database!`, ephemeral: true });
+                }
+                log(`User ${interaction.user.username}#${interaction.user.discriminator} requested a dump of input/output message ${interaction.targetMessage.id}`);
+                entry.messages = JSON.parse(entry.messages);
+                const file = `${interaction.targetMessage.id}.json`;
+                fs.writeFileSync(file, JSON.stringify(entry, null, 2));
+                await interaction.reply({
+                    files: [ file ],
+                    ephemeral: true
+                });
+                fs.rmSync(file);
             }
+        }
+        try {
+            contextMenuCommand[interaction.commandName]();
         } catch (error) {
             log(`Error while handling context menu:`, error);
         }
