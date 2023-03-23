@@ -64,6 +64,7 @@ The database contains a single table, `messages`, with the following columns:
 * `output_msg_id`: The ID of the response message
 * `input`: The user's input
 * `output`: The language model's response
+* `messages`: The complete messages object for this interaction, as JSON
 * `count_tokens`: The total number of text tokens that this interaction used
 
 This data is used for conversation history and regenerating responses. See the `delete_message_days` config option to set up automatic message deletion, and the `/fullpurge` slash command to safely wipe all saved messages.
