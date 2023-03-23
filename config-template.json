@@ -30,6 +30,8 @@
         "!", "/"
     ],
     "show_regenerate_button": false,
+    "request_timeout": 45,
+    "request_tries": 3,
     "http_server": {
         "enabled": false,
         "port": 8080

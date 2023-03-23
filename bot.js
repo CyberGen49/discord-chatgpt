@@ -232,7 +232,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             }, {
                 headers: { Authorization: `Bearer ${config.openai.secret}` },
                 validateStatus: status => true,
-                timeout: 1000*120
+                timeout: 1000*config.request_timeout
             });
             if (!res.data || res.data.error) {
                 throw new Error(`OpenAI responded with an error: ${JSON.stringify(res?.data?.error)}`);
@@ -261,7 +261,19 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
         }
         const messages = await getMessagesObject(msg);
-        const gpt = await getChatResponse(messages);
+        const gpt = await (async() => {
+            let tries = 0;
+            let result = null;
+            while (tries < config.request_tries) {
+                try {
+                    result = await getChatResponse(messages);
+                } catch (error) {}
+                if (result && !result?.error) return result;
+                log(`Failed! Retrying...`);
+                tries++;
+            }
+            return result;
+        })();
         if (!gpt || gpt?.error) {
             throw new Error(`Bad response from OpenAI: ${gpt.error}`);
         }
@@ -313,7 +325,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
         }
     } catch (error) {
-        log(state, `Failed to send message`, error);
+        log(state, `Failed to send message!`, error);
         try {
             await sendReply(`Sorry, something went wrong while replying!\n\`\`\`${error}\`\`\``, null, [
                 new Discord.ActionRowBuilder()

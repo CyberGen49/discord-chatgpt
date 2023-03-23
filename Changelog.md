@@ -6,6 +6,8 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Store entire messages object in database
 - Add context menu command for dumping a message from the database
 - Fix context when editing/regenerating messages
+- Automatically try again when OpenAI request fails
+- Add config options for OpenAI request timeout and retry count
 
 ## 2023-03-21
 - Add placeholders to status text
