@@ -5,23 +5,25 @@ A Discord bot that allows users to interact with OpenAI's `gpt-3.5-turbo` large 
 Check out [the changelog](/Changelog.md) to see what's changed!
 
 ## Using the bot
-You can have a conversation with the bot by sending it a DM or pinging it in a server with a message. In DMs, the bot is only able to remember your previous interaction (question and answer), unlike ChatGPT, which is able to remember much further back than that.
+You can have a conversation with the bot by sending it a DM or pinging it in a server with a message. In DMs, the bot is only able to remember your previous interaction (question and answer), and there's no conversation history by default in servers. 
 
-Conversation history doesn't work by default in servers, but you can reply to any message in a channel with a ping to the bot, along with another message. This will use the message you replied to as context. This works in DMs as well, if you want to re-address a message that was sent a while ago.
+In both DMs and servers, however, you can reply to any message (from the bot or someone else) and ping the bot with a followup message to use the source message as context. If the reply is to a message from the bot, the input message for that output message will also be included.
 
 ### Slash commands
 * `/help`: Outputs some help information.
 * `/stats [user]`: Outputs usage statistics. If a user is provided, their usage stats will be outputted instead.
 * `/purge`: Purges all of your message entries from the database.
-
-### Owner-only commands
-* `/fullpurge`: Purges all message entries from the database.
-* `/users`: Manages bot access.
+* `/fullpurge`: Purges all message entries from the database. Owner only.
+* `/users`: Manages bot access. Owner only.
     * `/users allow <user>`: Allows a user to use the bot.
     * `/users block <user>`: Blocks a user from using the bot.
     * `/users unset <user>`: Removes a user from the allow/block list.
     * `/users wipe`: Wipes the allow/block list.
     * `/users list`: Displays the list of allowed and blocked users.
+
+### Context menu commands
+These commands can be accessed through the **Apps** submenu when right-clicking on a message.
+* `Regenerate response`: When run on a language model response message sent by the bot, and if the message's data is stored in the database (hasn't been purged), the response will be regenerated.
 
 ## Running the bot yourself
 1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
