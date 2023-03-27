@@ -57,6 +57,16 @@ async function main() {
             .addSubcommand(subcmd => subcmd
                 .setName(`list`)
                 .setDescription(`Display the allow/block list`)),
+        new Discord.SlashCommandBuilder()
+            .setName('dalle')
+            .setDescription('Generate an image from a text prompt with DALL-E')
+            .addStringOption(option => option
+                .setName(`prompt`)
+                .setDescription(`Describe the image`)
+                .setMaxLength(1000)
+                .setMinLength(8)
+                .setRequired(true)
+            ),
         new Discord.ContextMenuCommandBuilder()
             .setName(`Regenerate response`)
             .setType(Discord.ApplicationCommandType.Message),

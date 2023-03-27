@@ -566,7 +566,52 @@ const commands = {
             }
         };
         subCommand[interaction.options.getSubcommand()]();
-    }
+    },
+    /** @type {CommandHandler} */
+    dalle: async(interaction) => {
+        if (interaction.user.id !== config.discord.owner_id)
+            return interaction.reply({
+                content: `For now, only the bot owner can use this command.`,
+                ephemeral: true
+            });
+        log(`User ${interaction.user.username}#${interaction.user.discriminator} used the DALL-E command`)
+        await interaction.deferReply();
+        const generateImage = async(prompt) => {
+            try {
+                const res = await axios.post(`https://api.openai.com/v1/images/generations`, {
+                    prompt: prompt,
+                    size: '1024x1024',
+                    response_format: 'b64_json'
+                }, {
+                    headers: { Authorization: `Bearer ${config.openai.secret}` },
+                    validateStatus: status => true,
+                    timeout: 1000*180
+                });
+                if (!res.data || res.data?.error) {
+                    throw new Error(JSON.stringify(res.data?.error, null, 4));
+                }
+                log(`Received image generation response from OpenAI`);
+                if (!fs.existsSync('./images')) fs.mkdirSync('./images');
+                const image = Buffer.from(res.data.data[0].b64_json, 'base64');
+                const imagePath = `./images/${interaction.id}.png`;
+                fs.writeFileSync(imagePath, image);
+                log(`Wrote image to file: ${imagePath}`);
+                return { path: imagePath };
+            } catch(e) {
+                log(`Error while generating image: ${e}`);
+                return { error: e };
+            }
+        };
+        const prompt = interaction.options.getString('prompt');
+        const res = await generateImage(prompt);
+        if (res.error) {
+            return interaction.editReply(`Error while generating image!\n\`\`\`${res.error}\`\`\``);
+        }
+        interaction.editReply({
+            content: prompt,
+            files: [ res.path ]
+        });
+    },
 };
 bot.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
@@ -666,6 +711,7 @@ bot.on('interactionCreate', async interaction => {
                 }
                 log(`User ${interaction.user.username}#${interaction.user.discriminator} requested a dump of input/output message ${interaction.targetMessage.id}`);
                 entry.messages = JSON.parse(entry.messages);
+                entry.cost = entry.count_tokens*config.usd_per_token;
                 const file = `${interaction.targetMessage.id}.json`;
                 fs.writeFileSync(file, JSON.stringify(entry, null, 2));
                 await interaction.reply({

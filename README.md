@@ -20,6 +20,7 @@ In both DMs and servers, however, you can reply to any message (from the bot or 
     * `/users unset <user>`: Removes a user from the allow/block list.
     * `/users wipe`: Wipes the allow/block list.
     * `/users list`: Displays the list of allowed and blocked users.
+* `/dalle`: Generate images from text prompts using DALL-E. Owner only.
 
 ### Context menu commands
 These commands can be accessed through the **Apps** submenu when right-clicking on a message.
