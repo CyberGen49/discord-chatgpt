@@ -42,7 +42,7 @@ These commands can be accessed through the **Apps** submenu when right-clicking 
     1. Scroll down and make sure "Message content intent" is on
 1. Set your Discord user ID in the `discord.owner_id` config field.
 1. Make any other changes to the [config file](./config-schema.md), then save it.
-1. Create the message database by running `sqlite3 main.db ".read schema.sql".`
+1. Create the message database by running `sqlite3 main.db ".read schema.sql"`.
     * This is a required step. See [Database](#database) for details.
 1. Register the bot's slash and context menu commands by running `node registerCommands.js`
 1. Start the bot with `node bot.js`
