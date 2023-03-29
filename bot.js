@@ -11,8 +11,8 @@ const express = require('express');
 const config = require('./config.json');
 
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
-    messages: 0,
-    tokens: 0,
+    totalInteractions: 0,
+    totalTokens: 0,
     users: {},
     months: {}
 };
@@ -48,11 +48,12 @@ const bot = new Discord.Client({
 });
 
 const setStatus = () => {
+    const statsMonth = stats.months[dayjs().format('YYYY-MM')] || {};
     const placeholders = {
         tokens_total: stats.totalTokens.toLocaleString(),
-        tokens_month: stats.months[dayjs().format('YYYY-MM')].totalTokens.toLocaleString() || 0,
+        tokens_month: (statsMonth.totalTokens || 0).toLocaleString(),
         price_total: (stats.totalTokens * config.usd_per_token).toFixed(2),
-        price_month: ((stats.months[dayjs().format('YYYY-MM')].totalTokens || 0) * config.usd_per_token).toFixed(2)
+        price_month: ((statsMonth.totalTokens || 0) * config.usd_per_token).toFixed(2)
     };
     const text = config.discord.status.text.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
     bot.user.setActivity(text, {
