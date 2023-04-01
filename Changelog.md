@@ -1,7 +1,11 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
-## 2022-03-29
+## 2023-03-31
+- Treat `/dalle` usage as a single interaction worth 10,000 tokens ($0.02)
+    - This is so stats stay accurate
+
+## 2023-03-29
 - Fix bugs related to new stats.json files
 
 ## 2023-03-26

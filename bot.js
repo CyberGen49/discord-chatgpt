@@ -608,6 +608,20 @@ const commands = {
         if (res.error) {
             return interaction.editReply(`Error while generating image!\n\`\`\`${res.error}\`\`\``);
         }
+        // Update all-time stats
+        const fakeTokenCount = 10000;
+            // 10000 tokens at 0.000002 per token = $0.02
+        stats.totalInteractions++;
+        stats.totalTokens += fakeTokenCount;
+        stats.users[msg.author.id].interactions++;
+        stats.users[msg.author.id].tokens += fakeTokenCount;
+        // Update monthly stats
+        stats.months[month].totalInteractions++;
+        stats.months[month].totalTokens += fakeTokenCount;
+        stats.months[month].users[msg.author.id].interactions++;
+        stats.months[month].users[msg.author.id].tokens += fakeTokenCount;
+        writeStats();
+        // Send reply
         interaction.editReply({
             content: prompt,
             files: [ res.path ]
