@@ -24,7 +24,9 @@ In both DMs and servers, however, you can reply to any message (from the bot or 
 
 ### Context menu commands
 These commands can be accessed through the **Apps** submenu when right-clicking on a message.
+
 * `Regenerate response`: When run on a language model response message sent by the bot, and if the message's data is stored in the database (hasn't been purged), the response will be regenerated.
+* `Dump response`: When run on a user prompt message or a language model response message sent by the bot, and if the message's data is stored in the database (hasn't been purged), all of the data associated with that interaction will be dumped to JSON and sent as a file. This is mostly for debugging purposes, but can be useful to check how many tokens an interaction used, and if the bot interpreted what it was supposed to.
 
 ## Running the bot yourself
 1. [Download and install Node.js](https://nodejs.org/en/download/) if you don't have it
