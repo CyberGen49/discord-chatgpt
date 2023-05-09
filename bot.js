@@ -152,7 +152,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} tried to generate while generating`);
         return sendReply(`One message at a time!`);
     }
-    const input = msg.content.split(' ').filter(segment => !segment.match(/<(@|#)(\d+)>/)).join(' ').trim();
+    const input = msg.content.replace(/<(@|#)(\d+)>/g, '').split(' ').filter(String).join(' ').trim();
     if (!input) {
         log(state, `User ${msg.author.username}#${msg.author.discriminator} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
