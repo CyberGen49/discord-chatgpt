@@ -69,7 +69,7 @@
                     "content": {
                         "type": "string",
                         "description": "The content of the message.",
-                        "markdownDescription": "The content of the message.\n\nPlaceholders:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n"
+                        "markdownDescription": "The content of the message.\n\nPlaceholders:\n* `{bot_username}`: The bot's username\n* `{user_username}`: The user's username\n* `{user_nickname}`: The user's server nickname, or their username if they have no nickname\n* `{time}`: The current system time in 12-hour format (e.g. 7:27 AM)\n* `{date}`: The current date and day of the week (e.g. Wednesday, April 26, 2023)\n* `{timezone}`: The system timezone in a friendly format (e.g. Central Standard Time)\n"
                     }
                 }
             }

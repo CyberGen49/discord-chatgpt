@@ -3,12 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('better-sqlite3');
 const dayjs = require('dayjs');
+const dayjsUTC = require('dayjs/plugin/utc');
+const dayjsTimezone = require('dayjs/plugin/timezone');
+const dayjsAdvanced = require('dayjs/plugin/advancedFormat');
 const clc = require('cli-color');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
 const Discord = require('discord.js');
 const express = require('express');
 const config = require('./config.json');
+
+dayjs.extend(dayjsUTC);
+dayjs.extend(dayjsTimezone);
+dayjs.extend(dayjsAdvanced);
 
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
     totalInteractions: 0,
@@ -167,22 +174,21 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         if (msg.type == Discord.MessageType.Reply) {
             const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
             const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
-            messages = [
-                { role: msgType, content: srcMsg.content },
-                ...messages
-            ];
             if (msgType == 'assistant') {
                 const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
                 if (lastMsg) {
                     messages = [
                         { role: 'user', content: lastMsg.input },
+                        { role: 'assistant', content: lastMsg.output },
                         ...messages
                     ];
                     log(state, `Using replied-to saved input and output as context`);
                 } else {
+                    messages.unshift({ role: msgType, content: srcMsg.content });
                     log(state, `Using replied-to user message as context (couldn't find saved message)`);
                 }
             } else {
+                messages.unshift({ role: msgType, content: srcMsg.content });
                 log(state, `Using replied-to user message as context`);
             }
         } else if (!msg.guild) {
@@ -199,7 +205,10 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         const placeholders = {
             user_username: msg.author.username,
             user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id).displayName : msg.author.username,
-            bot_username: bot.user.username
+            bot_username: bot.user.username,
+            time: dayjs().format('h:mm A'),
+            date: dayjs().format('dddd, MMMM D, YYYY'),
+            timezone: dayjs().format('zzz')
         }
         const starterMessages = [];
         for (const msg of config.starter_messages) {
