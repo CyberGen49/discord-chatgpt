@@ -44,6 +44,21 @@ const writeUsers = () => {
 }
 const countTokens = text => tokens.encode(text).length;
 
+const getUsernameString = user => {
+    if (user.discriminator == '0')
+        return user.username;
+    else
+        return `${user.username}#${user.discriminator}`;
+};
+const getUserDisplayName = user => {
+    if (user.nickname)
+        return user.nickname;
+    else if (user.displayName)
+        return user.displayName;
+    else
+        return user.username;
+};
+
 const bot = new Discord.Client({
     intents: [
         Discord.GatewayIntentBits.Guilds,
@@ -69,7 +84,7 @@ const setStatus = () => {
     lastStatusSet = Date.now();
 }
 bot.once('ready', () => {
-    log(`Logged in as ${bot.user.username}#${bot.user.discriminator}!`);
+    log(`Logged in as ${getUsernameString(bot.user)}!`);
     inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
     log(`Invite URL: ${inviteUrl}`);
     setStatus();
@@ -81,7 +96,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     const state = clc.cyanBright(`[${msg.id}]`);
     const now = Date.now();
     channelLastActive[msg.channel.id] = now;
-    if (msg.author.bot) return;
+    if (msg.author.bot && !config.discord.allowed_bots.includes(msg.author.bot.id)) return;
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
     const sendTyping = async() => {
         if (!existingReply)
@@ -121,12 +136,12 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         }
     }
     if (users.blocked.includes(msg.author.id)) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} is blocked`);
+        log(state, `User ${getUsernameString(msg.author)} is blocked`);
         return sendReply(`You're blocked from using me!`);
     }
     const isOwner = msg.author.id === config.discord.owner_id;
     if (!config.public_usage && !users.allowed.includes(msg.author.id) && !isOwner) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} isn't allowed`);
+        log(state, `User ${getUsernameString(msg.author)} isn't allowed`);
         const owner = await bot.users.fetch(config.discord.owner_id);
         await owner.send({
             content: `<@${msg.author.id}> tried using the bot but they aren't allowed to.`,
@@ -149,24 +164,24 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         });
     }
     if (userIsGenerating[msg.author.id]) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} tried to generate while generating`);
+        log(state, `User ${getUsernameString(msg.author)} tried to generate while generating`);
         return sendReply(`One message at a time!`);
     }
     const input = msg.content.replace(/<(@|#)(\d+)>/g, '').split(' ').filter(String).join(' ').trim();
     if (!input) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} made an empty ping`);
+        log(state, `User ${getUsernameString(msg.author)} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
     }
     for (const prefix of config.ignore_prefixes) {
         if (input.startsWith(prefix)) {
-            return log(state, `User ${msg.author.username}#${msg.author.discriminator} used an ignored prefix`);
+            return log(state, `User ${getUsernameString(msg.author)} used an ignored prefix`);
         }
     }
     if (countTokens(input) > config.max_input_tokens) {
-        log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a message that exceeded config.max_input_tokens`);
+        log(state, `User ${getUsernameString(msg.author)} sent a message that exceeded config.max_input_tokens`);
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
-    log(state, `User ${msg.author.username}#${msg.author.discriminator} sent a valid message`);
+    log(state, `User ${getUsernameString(msg.author)} sent a valid message`);
     const getMessagesObject = async(msg) => {
         let messages = [
             { role: 'user', content: input }
@@ -204,7 +219,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         }
         const placeholders = {
             user_username: msg.author.username,
-            user_nickname: msg.guild ? msg.guild.members.cache.get(msg.author.id).displayName : msg.author.username,
+            user_nickname: getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id) : msg.author),
             bot_username: bot.user.username,
             time: dayjs().format('h:mm A'),
             date: dayjs().format('dddd, MMMM D, YYYY'),
@@ -391,7 +406,7 @@ const commands = {
     /** @type {CommandHandler} */
     help: async(interaction) => {
         await interaction.reply(`I'm a bot who shares the same language model as ChatGPT! Send me a DM or ping me in a server and I'll be happy to assist you to the best of my abilities. In DMs, I'm able to remember your previous message and my response to it, and in DMs and servers, you can reply to any message (mine or someone else's) and I'll use it as context.\n\nNote that we save your interactions (inputs and outputs) to a database to provide conversation history. You can use \`/purge\` to remove all of that content at any time. OpenAI may also hang on to your inputs for a while, so see [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.\n\nInterested in the innerworkings or want to run me for yourself? [Read my source code on GitHub](<https://github.com/CyberGen49/discord-chatgpt>)!`);
-        log(`${interaction.user.username}#${interaction.user.discriminator} used /help`);
+        log(`${getUsernameString(interaction.user)} used /help`);
     },
     /** @type {CommandHandler} */
     stats: async(interaction) => {
@@ -462,7 +477,7 @@ const commands = {
             embeds: embeds,
             ephemeral: true
         });
-        log(`${interaction.user.username}#${interaction.user.discriminator} got stats for ${user.username}#${user.discriminator}`);
+        log(`${getUsernameString(interaction.user)} got stats for ${getUsernameString(user)}`);
     },
     /** @type {CommandHandler} */
     purge: async(interaction) => {
@@ -473,7 +488,7 @@ const commands = {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
         }
         db.close();
-        log(`${interaction.user.username}#${interaction.user.discriminator} purged their saved messages`);
+        log(`${getUsernameString(interaction.user)} purged their saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
     },
     /** @type {CommandHandler} */
@@ -486,12 +501,12 @@ const commands = {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
         }
         db.close();
-        log(`${interaction.user.username}#${interaction.user.discriminator} purged all saved messages`);
+        log(`${getUsernameString(interaction.user)} purged all saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database.`);
     },
     /** @type {CommandHandler} */
     invite: async(interaction) => {
-        log(`${interaction.user.username}#${interaction.user.discriminator} get the invite link`);
+        log(`${getUsernameString(interaction.user)} get the invite link`);
         interaction.reply({
             content: inviteUrl,
             ephemeral: true
@@ -512,7 +527,7 @@ const commands = {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
                 users.allowed.push(user.id);
-                log(`${interaction.user.username}#${interaction.user.discriminator} allowed ${user.username}#${user.discriminator} to use the bot`);
+                log(`${getUsernameString(interaction.user)} allowed ${getUsernameString(user)} to use the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> can now use the bot!`);
                 try {
@@ -523,7 +538,7 @@ const commands = {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
                 users.blocked.push(user.id);
-                log(`${interaction.user.username}#${interaction.user.discriminator} blocked ${user.username}#${user.discriminator} from using the bot`);
+                log(`${getUsernameString(interaction.user)} blocked ${getUsernameString(user)} from using the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is now blocked from using the bot.`);
                 try {
@@ -533,14 +548,14 @@ const commands = {
             unset: () => {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
-                log(`${interaction.user.username}#${interaction.user.discriminator} unset ${user.username}#${user.discriminator}'s bot usage`);
+                log(`${getUsernameString(interaction.user)} unset ${getUsernameString(user)}'s bot usage`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is no longer allowed or blocked from using the bot. The \`config.public_usage\` option will now apply.`);
             },
             wipe: () => {
                 users.allowed = [];
                 users.blocked = [];
-                log(`${interaction.user.username}#${interaction.user.discriminator} wiped the allow/block list`);
+                log(`${getUsernameString(interaction.user)} wiped the allow/block list`);
                 writeUsers();
                 interaction.editReply(`The list of allowed and blocked users has been wiped. The \`config.public_usage\` option will now apply to all users.`);
             },
@@ -584,7 +599,7 @@ const commands = {
                 content: `For now, only the bot owner can use this command.`,
                 ephemeral: true
             });
-        log(`User ${interaction.user.username}#${interaction.user.discriminator} used the DALL-E command`)
+        log(`User ${getUsernameString(interaction.user)} used the DALL-E command`)
         await interaction.deferReply();
         const generateImage = async(prompt) => {
             try {
@@ -653,7 +668,7 @@ bot.on('interactionCreate', async interaction => {
                     const id = params[2];
                     const user = await bot.users.fetch(id);
                     users.allowed.push(id);
-                    log(`User ${user.username}#${user.discriminator} was allowed to use the bot (via button)`);
+                    log(`User ${getUsernameString(user)} was allowed to use the bot (via button)`);
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been granted!` });
@@ -666,7 +681,7 @@ bot.on('interactionCreate', async interaction => {
                     if (users.allowed.includes(id))
                         users.allowed.splice(users.allowed.indexOf(id), 1);
                     users.blocked.push(id);
-                    log(`User ${user.username}#${user.discriminator} was blocked from using the bot (via button)`);
+                    log(`User ${getUsernameString(user)} was blocked from using the bot (via button)`);
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been denied. Future requests will be ignored.` });
@@ -684,7 +699,7 @@ bot.on('interactionCreate', async interaction => {
                     if (!msg) {
                         return interaction.reply({ content: `The source message no longer exists!`, ephemeral: true });
                     }
-                    log(`User ${interaction.user.username}#${interaction.user.discriminator} requested message ${interaction.message.id} to be regenerated`);
+                    log(`User ${getUsernameString(interaction.user)} requested message ${interaction.message.id} to be regenerated`);
                     await interaction.reply({
                         content: `On it!`,
                         ephemeral: true
@@ -721,7 +736,7 @@ bot.on('interactionCreate', async interaction => {
                     return interaction.reply({ content: `The input message no longer exists!`, ephemeral: true });
                 }
                 db.close();
-                log(`User ${interaction.user.username}#${interaction.user.discriminator} requested for message ${interaction.targetMessage.id} be regenerated`);
+                log(`User ${getUsernameString(interaction.user)} requested for message ${interaction.targetMessage.id} be regenerated`);
                 await interaction.targetMessage.edit('...');
                 await interaction.reply({ content: `On it!`, ephemeral: true });
                 bot.emit('messageCreate', inputMsg, interaction.targetMessage);
@@ -733,7 +748,7 @@ bot.on('interactionCreate', async interaction => {
                 if (!entry) {
                     return interaction.reply({ content: `This message isn't in the database!`, ephemeral: true });
                 }
-                log(`User ${interaction.user.username}#${interaction.user.discriminator} requested a dump of input/output message ${interaction.targetMessage.id}`);
+                log(`User ${getUsernameString(interaction.user)} requested a dump of input/output message ${interaction.targetMessage.id}`);
                 entry.messages = JSON.parse(entry.messages);
                 entry.cost = entry.count_tokens*config.usd_per_token;
                 const file = `${interaction.targetMessage.id}.json`;

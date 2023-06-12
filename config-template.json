@@ -10,7 +10,8 @@
         "status": {
             "type": "Listening",
             "text": "your questions"
-        }
+        },
+        "allowed_bots": []
     },
     "starter_messages": [
         {
