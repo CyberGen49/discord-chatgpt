@@ -184,7 +184,20 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         log(state, `User ${getUsernameString(msg.author)} tried to generate while generating`);
         return sendReply(`One message at a time!`);
     }
-    const input = msg.content.replace(/<(@|#)(\d+)>/g, '').split(' ').filter(String).join(' ').trim();
+    let input = msg.content;
+    const pingMatches = msg.content.match(/<@(\d+)>/g) || [];
+    const channelMatches = msg.content.match(/<#(\d+)>/g) || [];
+    for (const match of pingMatches) {
+        const id = match.replace(/\D/g, '');
+        const user = msg.guild ? msg.guild.members.cache.get(id).user : bot.users.cache.get(id);
+        console.log(user);
+        const userName = await getUserDisplayName(user);
+        input = input.replace(match, userName);
+    }
+    for (const match of channelMatches) {
+        input = input.replace(match, '');
+    }
+    input = input.split(' ').filter(String).join(' ').trim();
     if (!input) {
         log(state, `User ${getUsernameString(msg.author)} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
@@ -236,7 +249,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         }
         const placeholders = {
             user_username: msg.author.username,
-            user_nickname: await getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id) : msg.author),
+            user_nickname: await getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id).user : msg.author),
             bot_username: bot.user.username,
             time: dayjs().format('h:mm A'),
             date: dayjs().format('dddd, MMMM D, YYYY'),
