@@ -44,19 +44,36 @@ const writeUsers = () => {
 }
 const countTokens = text => tokens.encode(text).length;
 
+const rawUserCache = {};
+const fetchRawUser = async id => {
+    if (rawUserCache[id] && (Date.now()-rawUserCache[id].time) < (1000*60*15))
+        return rawUserCache[id];
+    const res = await axios.get(`https://discordusers.simplecyber.org/u/${id}/json`);
+    if (res.data) {
+        res.data.time = Date.now();
+        rawUserCache[id] = res.data;
+        return res.data;
+    }
+};
 const getUsernameString = user => {
     if (user.discriminator == '0')
         return user.username;
     else
         return `${user.username}#${user.discriminator}`;
 };
-const getUserDisplayName = user => {
+const getUserDisplayName = async user => {
     if (user.nickname)
         return user.nickname;
-    else if (user.displayName)
-        return user.displayName;
-    else
+    else {
+        try {
+            // Discord.js doesn't return the user's global name,
+            // so we'll use discordusers.simplecyber.org to fetch
+            // that data instead.
+            const rawUser = await fetchRawUser(user.id);
+            if (rawUser.global_name) return rawUser.global_name;
+        } catch (error) {}
         return user.username;
+    }
 };
 
 const bot = new Discord.Client({
@@ -219,7 +236,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         }
         const placeholders = {
             user_username: msg.author.username,
-            user_nickname: getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id) : msg.author),
+            user_nickname: await getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id) : msg.author),
             bot_username: bot.user.username,
             time: dayjs().format('h:mm A'),
             date: dayjs().format('dddd, MMMM D, YYYY'),
