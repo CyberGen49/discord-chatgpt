@@ -4,6 +4,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 ## 2023-06-11
 - Adapt to Discord's new username system
 - Add `config.discord.allowed_bots`
+- Replace user pings in prompts with their corresponding names
 - Code refactoring
 
 ## 2023-05-09
