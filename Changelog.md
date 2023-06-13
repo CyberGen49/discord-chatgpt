@@ -1,6 +1,9 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-06-12
+- Fixes
+
 ## 2023-06-11
 - Adapt to Discord's new username system
 - Add `config.discord.allowed_bots`

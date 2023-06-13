@@ -190,7 +190,6 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     for (const match of pingMatches) {
         const id = match.replace(/\D/g, '');
         const user = msg.guild ? msg.guild.members.cache.get(id).user : bot.users.cache.get(id);
-        console.log(user);
         const userName = await getUserDisplayName(user);
         input = input.replace(match, userName);
     }
@@ -247,14 +246,15 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 log(state, `Using previous input and output as context`);
             }
         }
+        const authorGuildUser = msg.guild ? msg.guild.members.cache.get(msg.author.id) : null;
         const placeholders = {
             user_username: msg.author.username,
-            user_nickname: await getUserDisplayName(msg.guild ? msg.guild.members.cache.get(msg.author.id).user : msg.author),
+            user_nickname: await getUserDisplayName(authorGuildUser?.nickname ? authorGuildUser : msg.author),
             bot_username: bot.user.username,
             time: dayjs().format('h:mm A'),
             date: dayjs().format('dddd, MMMM D, YYYY'),
             timezone: dayjs().format('zzz')
-        }
+        };
         const starterMessages = [];
         for (const msg of config.starter_messages) {
             starterMessages.push({
