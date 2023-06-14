@@ -667,13 +667,14 @@ const commands = {
             // 10000 tokens at 0.000002 per token = $0.02
         stats.totalInteractions++;
         stats.totalTokens += fakeTokenCount;
-        stats.users[msg.author.id].interactions++;
-        stats.users[msg.author.id].tokens += fakeTokenCount;
+        stats.users[interaction.user.id].interactions++;
+        stats.users[interaction.user.id].tokens += fakeTokenCount;
         // Update monthly stats
+        const month = dayjs().format('YYYY-MM');
         stats.months[month].totalInteractions++;
         stats.months[month].totalTokens += fakeTokenCount;
-        stats.months[month].users[msg.author.id].interactions++;
-        stats.months[month].users[msg.author.id].tokens += fakeTokenCount;
+        stats.months[month].users[interaction.user.id].interactions++;
+        stats.months[month].users[interaction.user.id].tokens += fakeTokenCount;
         writeStats();
         // Send reply
         interaction.editReply({
