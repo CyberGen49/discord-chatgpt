@@ -24,7 +24,7 @@
     ],
     "max_input_tokens": 500,
     "max_output_tokens": 500,
-    "usd_per_token": 0.000002,
+    "usd_per_token": 0.0000015,
     "delete_message_days": 0,
     "public_usage": false,
     "ignore_prefixes": [

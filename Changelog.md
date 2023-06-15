@@ -1,6 +1,10 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-06-14
+- Update `discord.js`
+- Bug fixes
+
 ## 2023-06-12
 - Fixes
 

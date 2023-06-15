@@ -163,17 +163,16 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         await owner.send({
             content: `<@${msg.author.id}> tried using the bot but they aren't allowed to.`,
             components: [
-                new Discord.ActionRowBuilder()
-                    .addComponents([
-                        new Discord.ButtonBuilder()
-                            .setCustomId(`user.allow.${msg.author.id}`)
-                            .setLabel(`Allow ${msg.author.username}`)
-                            .setStyle(Discord.ButtonStyle.Success),
-                        new Discord.ButtonBuilder()
-                            .setCustomId(`user.block.${msg.author.id}`)
-                            .setLabel(`Block ${msg.author.username}`)
-                            .setStyle(Discord.ButtonStyle.Danger)
-                    ])
+                new Discord.ActionRowBuilder().addComponents([
+                    new Discord.ButtonBuilder()
+                        .setCustomId(`user.allow.${msg.author.id}`)
+                        .setLabel(`Allow ${await getUserDisplayName(msg.author)}`)
+                        .setStyle(Discord.ButtonStyle.Success),
+                    new Discord.ButtonBuilder()
+                        .setCustomId(`user.block.${msg.author.id}`)
+                        .setLabel(`Block ${await getUserDisplayName(msg.author)}`)
+                        .setStyle(Discord.ButtonStyle.Danger)
+                ])
             ]
         });
         return sendReply(`Only certain users are allowed to talk to me right now. A message has been sent to <@${config.discord.owner_id}> so they can add you if they want.`, {
@@ -703,7 +702,10 @@ bot.on('interactionCreate', async interaction => {
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been granted!` });
-                        interaction.reply({ content: `<@${id}> is now allowed to use the bot!` });
+                        interaction.message.edit({
+                            content: `<@${id}> is now allowed to use the bot!`,
+                            components: []
+                        });
                     } catch(e) {}
                 }
                 if (params[1] == 'block') {
@@ -716,7 +718,10 @@ bot.on('interactionCreate', async interaction => {
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been denied. Future requests will be ignored.` });
-                        interaction.reply({ content: `<@${id}> is now blocked from using the bot! Their future requests to use it will be ignored.` });
+                        interaction.message.edit({
+                            content: `<@${id}> is now blocked from using the bot! Their future requests to use it will be ignored.`,
+                            components: []
+                        });
                     } catch(e) {}
                 }
             }
