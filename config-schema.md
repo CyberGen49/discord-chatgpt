@@ -7,6 +7,9 @@ OpenAI API settings.
 ### string `openai.secret`
 Your OpenAI secret key.
 
+### string `openai.model`
+The language model to use for generating responses. Note that pricing varies between models. See OpenAI's API docs for more details.
+
 ### object `discord`
 Discord bot settings.
 
@@ -36,6 +39,9 @@ Placeholders:
 * `{price_total}`: The total amount of money spent, in USD.
 * `{price_month}`: The amount of money spent this month, in USD.
 
+### string[] `discord.allowed_bots`
+A list of bot user IDs that are allowed to interact with the bot. This can be useful for automation, but make sure to avoid any recursion!
+
 ### object[] `starter_messages`
 A set of message objects to send with every request to the language model, before the user's input or context. These messages can be used to influence the behaviour of the model.Each message object should have a `role` property and a `content` property.
 
@@ -52,7 +58,10 @@ The content of the message.
 Placeholders:
 * `{bot_username}`: The bot's username
 * `{user_username}`: The user's username
-* `{user_nickname}`: The user's server nickname, or their username if they have no nickname
+* `{user_nickname}`: The user's server nickname, global nickname, or username
+* `{time}`: The current system time in 12-hour format (e.g. 7:27 AM)
+* `{date}`: The current date and day of the week (e.g. Wednesday, April 26, 2023)
+* `{timezone}`: The system timezone in a friendly format (e.g. Central Standard Time)
 
 
 ### integer `max_input_tokens`
@@ -92,4 +101,10 @@ Whether or not to enable the HTTP server. Requests to /invite will redirect to t
 
 ### integer `http_server.port`
 The port to host the HTTP server on, if enabled.
+
+### string `http_server.hostname`
+The public hostname that provides access to this HTTP server. This is used to generate invite and conversation viewer URLs.
+
+### boolean `http_server.secure`
+Whether or not hostname defined above should be referenced using HTTPS, in the event that you're using a proxy.
 

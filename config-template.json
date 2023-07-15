@@ -1,7 +1,8 @@
 {
     "$schema": "./config-schema.json",
     "openai": {
-        "secret": ""
+        "secret": "",
+        "model": "gpt-3.5-turbo"
     },
     "discord": {
         "id": "",
@@ -35,6 +36,8 @@
     "request_tries": 3,
     "http_server": {
         "enabled": false,
-        "port": 8080
+        "port": 8080,
+        "hostname": "localhost",
+        "secure": false
     }
 }

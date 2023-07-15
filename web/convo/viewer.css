@@ -1,0 +1,41 @@
+
+.msg {
+    padding: 20px 15px;
+    border-radius: 20px;
+}
+.msg.assistant {
+    background: var(--b2);
+}
+
+.msg .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+
+.msg .name {
+    font-family: 'Comfortaa';
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--f3);
+}
+
+.msg.user .avatar.bot,
+.msg.assistant .avatar.user,
+.msg.user .name.bot,
+.msg.assistant .name.user {
+    display: none;
+}
+
+.msg .content {
+    font-family: 'Comfortaa';
+    font-size: 16px;
+}
+.msg .content p,
+.msg .content li {
+    line-height: 1.5;
+}
+
+pre code {
+    max-height: unset;
+}

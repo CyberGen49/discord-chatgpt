@@ -8,6 +8,10 @@
                 "secret": {
                     "type": "string",
                     "description": "Your OpenAI secret key."
+                },
+                "model": {
+                    "type": "string",
+                    "description": "The language model to use for generating responses. Note that pricing varies between models. See OpenAI's API docs for more details."
                 }
             }
         },
@@ -133,6 +137,14 @@
                 "port": {
                     "type": "integer",
                     "description": "The port to host the HTTP server on, if enabled."
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "The public hostname that provides access to this HTTP server. This is used to generate invite and conversation viewer URLs."
+                },
+                "secure": {
+                    "type": "boolean",
+                    "description": "Whether or not hostname defined above should be referenced using HTTPS, in the event that you're using a proxy."
                 }
             }
         }

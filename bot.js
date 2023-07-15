@@ -1,6 +1,5 @@
 
 const fs = require('fs');
-const path = require('path');
 const sqlite3 = require('better-sqlite3');
 const dayjs = require('dayjs');
 const dayjsUTC = require('dayjs/plugin/utc');
@@ -9,6 +8,7 @@ const dayjsAdvanced = require('dayjs/plugin/advancedFormat');
 const clc = require('cli-color');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
+const { marked } = require('marked');
 const Discord = require('discord.js');
 const express = require('express');
 const config = require('./config.json');
@@ -85,8 +85,9 @@ const bot = new Discord.Client({
     ],
     partials: [ Discord.Partials.Channel, Discord.Partials.Message ]
 });
+const botUser = fetchRawUser(config.discord.id);
 
-const setStatus = () => {
+const updateStatus = () => {
     const statsMonth = stats.months[dayjs().format('YYYY-MM')] || {};
     const placeholders = {
         tokens_total: stats.totalTokens.toLocaleString(),
@@ -104,7 +105,7 @@ bot.once('ready', () => {
     log(`Logged in as ${getUsernameString(bot.user)}!`);
     inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
     log(`Invite URL: ${inviteUrl}`);
-    setStatus();
+    updateStatus();
 });
 
 const userIsGenerating = {};
@@ -127,7 +128,8 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 log(state, `Sending response as ${textFileName}`);
                 fs.writeFileSync(textFileName, content);
                 shouldSendTextFile = true;
-                content = `This response was too long to send as a message, so here it is in a text file:`;
+                content = `<http${config.http_server.secure ? 's':''}://${config.http_server.hostname}/convo/${msg.id}>`;
+                if (!config.http_server.enabled) content = '';
             }
             let replyMethod = data => msg.channel.send(data);
             if (now !== channelLastActive[msg.channel.id]) {
@@ -283,7 +285,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                     tries++;
                     try {
                         res = await axios.post('https://api.openai.com/v1/chat/completions', {
-                            model: 'gpt-3.5-turbo',
+                            model: config.openai.model,
                             messages: messages,
                             max_tokens: config.max_output_tokens
                         }, {
@@ -377,7 +379,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                         .setLabel('Regenerate')
                 ])
         ] : null);
-        setStatus();
+        updateStatus();
         if (outputMsg && outputMsg.id) {
             db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
         }
@@ -794,6 +796,18 @@ bot.on('interactionCreate', async interaction => {
                     ephemeral: true
                 });
                 fs.rmSync(file);
+            },
+            'Get conversation link': async() => {
+                if (!config.http_server.enabled) {
+                    return interaction.reply({ content: `The conversation viewer is unavailable!`, ephemeral: true });
+                }
+                const db = sqlite3('./main.db');
+                const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ? OR output_msg_id = ?`).get(interaction.targetMessage.id, interaction.targetMessage.id);
+                db.close();
+                if (!entry) {
+                    return interaction.reply({ content: `This message isn't in the database!`, ephemeral: true });
+                }
+                interaction.reply({ content: `View this conversation:\nhttp${config.http_server.secure ? 's':''}://${config.http_server.hostname}/convo/${interaction.targetMessage.id}`, ephemeral: true });
             }
         }
         try {
@@ -826,12 +840,39 @@ if (config.http_server.enabled) {
         });
         next();
     });
+    srv.use(express.static(`${__dirname}/web`));
     srv.get('/invite', (req, res) => {
         res.redirect(inviteUrl);
     });
-    srv.get('/schema', (req, res) => {
-        res.setHeader('Content-Type', 'application/schema+json');
-        res.sendFile(path.join(__dirname, 'config-schema.json'));
+    srv.get('/convo/:id', async(req, res) => {
+        const db = sqlite3('./main.db');
+        const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ? OR output_msg_id = ?`).get(req.params.id, req.params.id);
+        db.close();
+        if (!entry) {
+            return res.status(404).end(`The conversation associated with that ID isn't in the database!`);
+        }
+        entry.messages = JSON.parse(entry.messages);
+        const messages = [];
+        for (const msg of entry.messages) {
+            if (msg.role == 'system') continue;
+            let lines = msg.content.split('\n');
+            let editedLines = [];
+            for (const line of lines) {
+                editedLines.push(line.replace(/^```(.{12,})/, '```\n$1'));
+            }
+            messages.push({
+                role: msg.role,
+                html: marked.parse(editedLines.join('\n'), {
+                    mangle: false,
+                    headerIds: false
+                })
+            });
+        }
+        res.render(`${__dirname}/web/convo/viewer.ejs`, {
+            bot: await botUser,
+            user: await fetchRawUser(entry.user_id),
+            messages: messages,
+        });
     });
     srv.use((req, res) => {
         res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);

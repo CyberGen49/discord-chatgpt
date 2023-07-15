@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversation with <%= user.global_name || user.username %></title>
+    <meta property="og:site_name" content="<%= bot.username %> Conversation Viewer">
+    <meta property="og:title" content="Conversation with <%= user.global_name || user.username %>">
+    <link rel="icon" href="<%= bot.avatar_url %>">
+    <link defer rel="stylesheet" href="https://src.simplecyber.org/v2/base.css">
+    <link defer rel="stylesheet" href="https://src.simplecyber.org/v2/themes.css">
+    <link defer rel="stylesheet" href="/convo/viewer.css">
+    <script src="https://src.simplecyber.org/lib/prism.min.js"></script>
+</head>
+<body class="lightmuted">
+    <script>
+        // Use dark theme if the browser is dark
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList = 'darkmuted';
+        }
+    </script>
+    <div class="container">
+        <div class="col gap-10">
+            <% for (const msg of messages) { %>
+                <div class="msg <%= msg.role %> row gap-15">
+                    <div class="flex-no-shrink">
+                        <img class="avatar user" src="<%= user.avatar_url %>">
+                        <img class="avatar bot" src="<%= bot.avatar_url %>">
+                    </div>
+                    <div class="col gap-5 flex-grow" style="min-width: 0px">
+                        <div>
+                            <span class="name user"><%= user.global_name || user.username %></span>
+                            <span class="name bot"><%= bot.username %></span>
+                        </div>
+                        <div class="content">
+                            <%- msg.html %>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </div>
+    <script>
+        // Scroll to last message
+        const offset = document.querySelector('.msg:last-child').offsetTop;
+        window.scrollTo(0, offset-10);
+    </script>
+</body>
+</html>

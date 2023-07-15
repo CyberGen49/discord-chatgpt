@@ -71,6 +71,9 @@ async function main() {
             .setName(`Regenerate response`)
             .setType(Discord.ApplicationCommandType.Message),
         new Discord.ContextMenuCommandBuilder()
+            .setName(`Get conversation link`)
+            .setType(Discord.ApplicationCommandType.Message),
+        new Discord.ContextMenuCommandBuilder()
             .setName(`Dump interaction`)
             .setType(Discord.ApplicationCommandType.Message)
     ];

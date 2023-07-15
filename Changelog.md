@@ -1,6 +1,16 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-07-14
+- Refactoring
+- Update all modules, confirm functionality with Node 20
+- Add `config.openai.model` for setting the language model
+- Add `config.http_server` `host` and `secure` options
+- Add the ability to view conversations in the browser by link
+- Add the **Get conversation link** context menu item
+- Send a link to view the conversation along with messages that are sent as a text file
+    - This helps to still view the rendered message instead of plain text
+
 ## 2023-06-14
 - Update `discord.js`
 - Bug fixes
