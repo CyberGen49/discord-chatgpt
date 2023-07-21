@@ -1,6 +1,11 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-07-20
+- Use the `openai` module for requests
+- Add tons of comments!
+- Refactoring
+
 ## 2023-07-14
 - Refactoring
 - Update all modules, confirm functionality with Node 20

@@ -1,4 +1,5 @@
 
+// Import modules
 const fs = require('fs');
 const sqlite3 = require('better-sqlite3');
 const dayjs = require('dayjs');
@@ -8,27 +9,39 @@ const dayjsAdvanced = require('dayjs/plugin/advancedFormat');
 const clc = require('cli-color');
 const tokens = require('gpt-3-encoder');
 const axios = require('axios');
+const OpenAI = require('openai');
 const { marked } = require('marked');
 const Discord = require('discord.js');
 const express = require('express');
-const config = require('./config.json');
 
+// Extend Day.js
 dayjs.extend(dayjsUTC);
 dayjs.extend(dayjsTimezone);
 dayjs.extend(dayjsAdvanced);
 
+// Read config
+const config = require('./config.json');
+
+// Read in or build stats object
 const stats = fs.existsSync('./stats.json') ? require('./stats.json') : {
     totalInteractions: 0,
     totalTokens: 0,
     users: {},
     months: {}
 };
+// Read in or build the user access list object
 const users = fs.existsSync('./users.json') ? require('./users.json') : {
     allowed: [],
     blocked: []
 };
-let inviteUrl = '';
 
+// Configure OpenAI
+const configuration = new OpenAI.Configuration({
+    apiKey: config.openai.secret,
+});
+const openai = new OpenAI.OpenAIApi(configuration);
+
+// Function for logging to the console with a timestamp
 const log = (...args) => {
     const timestamp = `[${dayjs().format('YYYY-MM-DD HH:mm:ss')}]`;
     console.log(clc.white(timestamp), ...args);
@@ -36,14 +49,21 @@ const log = (...args) => {
     const logFile = `./logs/${dayjs().format('YYYY-MM-DD')}.log`;
     fs.appendFileSync(logFile, `${timestamp} ${args.join(' ')}\n`.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, ''));
 }
+
+// Functions for writing to stats and users files
 const writeStats = () => {
     fs.writeFileSync('./stats.json', JSON.stringify(stats));
 }
 const writeUsers = () => {
     fs.writeFileSync('./users.json', JSON.stringify(users));
 }
+
+// Shortcut function for counting the number of tokens in a string
 const countTokens = text => tokens.encode(text).length;
 
+// Function for fetching raw Discord userdata from the API
+// Uses the discordusers.simplecyber.org API as a proxy
+// Visit that site and click the "API" button for more details
 const rawUserCache = {};
 const fetchRawUser = async id => {
     if (rawUserCache[id] && (Date.now()-rawUserCache[id].time) < (1000*60*15))
@@ -55,12 +75,19 @@ const fetchRawUser = async id => {
         return res.data;
     }
 };
+
+// Function for getting a user's username as a string
+// This function will only add the user's discriminator if they have one
+// This is a workaround while Discord rolls out the new username system
 const getUsernameString = user => {
     if (user.discriminator == '0')
         return user.username;
     else
         return `${user.username}#${user.discriminator}`;
 };
+
+// Function for getting the user's display name
+// First we check for a nickname, then for a global name, then for a username
 const getUserDisplayName = async user => {
     if (user.nickname)
         return user.nickname;
@@ -76,6 +103,7 @@ const getUserDisplayName = async user => {
     }
 };
 
+// Build the bot object and save its user data
 const bot = new Discord.Client({
     intents: [
         Discord.GatewayIntentBits.Guilds,
@@ -87,6 +115,7 @@ const bot = new Discord.Client({
 });
 const botUser = fetchRawUser(config.discord.id);
 
+// Function for updating the bot's dynamic status
 const updateStatus = () => {
     const statsMonth = stats.months[dayjs().format('YYYY-MM')] || {};
     const placeholders = {
@@ -101,36 +130,60 @@ const updateStatus = () => {
     });
     lastStatusSet = Date.now();
 }
+
+// Log into the bot
+let inviteUrl = '';
 bot.once('ready', () => {
     log(`Logged in as ${getUsernameString(bot.user)}!`);
     inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
     log(`Invite URL: ${inviteUrl}`);
     updateStatus();
 });
+bot.login(config.discord.token);
 
+// Contains keys for each user ID, set to a boolean determining
+// whether they're currently waiting for a response or not
 const userIsGenerating = {};
+// Contains keys for each channel ID, set to a timestamp of
+// their last activity
 const channelLastActive = {};
+
+// Handle new messages
+// `existingReply` is set to a message object in the event of a regen
 bot.on('messageCreate', async(msg, existingReply = null) => {
+
     const state = clc.cyanBright(`[${msg.id}]`);
     const now = Date.now();
     channelLastActive[msg.channel.id] = now;
-    if (msg.author.bot && !config.discord.allowed_bots.includes(msg.author.bot.id)) return;
-    if (msg.guild && !msg.mentions.has(bot.user.id)) return;
+
+    // Function for sending a typing indicator
     const sendTyping = async() => {
         if (!existingReply)
             await msg.channel.sendTyping();
     }
+
+    // Function for replying to the message
+    // Returns the resulting new message object or null if there was an error
     const sendReply = async(content, allowedMentions, components) => {
         try {
+            // Determine if we need to send a text file instead
+            // This should happen if our content is at or over 2k chars
             const textFileName = `response-${msg.id}.txt`;
             let shouldSendTextFile = false;
             if (content.length > 1999) {
                 log(state, `Sending response as ${textFileName}`);
                 fs.writeFileSync(textFileName, content);
                 shouldSendTextFile = true;
-                content = `<http${config.http_server.secure ? 's':''}://${config.http_server.hostname}/convo/${msg.id}>`;
-                if (!config.http_server.enabled) content = '';
+                // If the HTTP server is enabled, also send a link to view
+                // the conversation online
+                content = '';
+                if (config.http_server.enabled) {
+                    content = `<http${config.http_server.secure ? 's':''}://${config.http_server.hostname}/convo/${msg.id}>`;
+                }
             }
+            // Determine the method to send with
+            // If there's been activity since this message, reply to it
+            // If this is an existing reply, edit it
             let replyMethod = data => msg.channel.send(data);
             if (now !== channelLastActive[msg.channel.id]) {
                 replyMethod = data => msg.reply(data);
@@ -138,12 +191,14 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             if (existingReply) {
                 replyMethod = data => existingReply.edit(data);
             }
+            // Build the response object
             const data = {
                 content: content,
                 files: shouldSendTextFile ? [ textFileName ] : [],
                 components: components || []
             };
             if (allowedMentions) data.allowedMentions = allowedMentions;
+            // Send the message and delete the text file if necessary
             const newMsg = await replyMethod(data);
             log(state, `Response message ${newMsg.id} sent`);
             if (shouldSendTextFile)
@@ -154,10 +209,144 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             return null;
         }
     }
+
+    // Function for building the OpenAI messages object with context
+    const getMessagesObject = async(msg) => {
+        let messages = [
+            { role: 'user', content: input }
+        ];
+        // If the message was a reply, use the replied-to message as context
+        if (msg.type == Discord.MessageType.Reply) {
+            const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
+            const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
+            // If the replied-to message was from the bot, check if that message's
+            // input is saved in the database. If so, use that input as context as well.
+            if (msgType == 'assistant') {
+                const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
+                if (lastMsg) {
+                    messages = [
+                        { role: 'user', content: lastMsg.input },
+                        { role: 'assistant', content: lastMsg.output },
+                        ...messages
+                    ];
+                    log(state, `Using replied-to saved input and output as context`);
+                } else {
+                    messages.unshift({ role: msgType, content: srcMsg.content });
+                    log(state, `Using replied-to user message as context (couldn't find saved message)`);
+                }
+            } else {
+                messages.unshift({ role: msgType, content: srcMsg.content });
+                log(state, `Using replied-to user message as context`);
+            }
+        // If the message was sent in DMs, use the previous message as context
+        } else if (!msg.guild) {
+            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
+            if (lastMsg) {
+                messages = [
+                    { role: 'user', content: lastMsg.input },
+                    { role: 'assistant', content: lastMsg.output },
+                    ...messages
+                ];
+                log(state, `Using previous input and output as context`);
+            }
+        }
+        // Generate placeholders
+        const authorGuildUser = msg.guild ? msg.guild.members.cache.get(msg.author.id) : null;
+        const placeholders = {
+            user_username: msg.author.username,
+            user_nickname: await getUserDisplayName(authorGuildUser?.nickname ? authorGuildUser : msg.author),
+            bot_username: bot.user.username,
+            time: dayjs().format('h:mm A'),
+            date: dayjs().format('dddd, MMMM D, YYYY'),
+            timezone: dayjs().format('zzz')
+        };
+        // Prepare configured starter messages and add them to the stack
+        const starterMessages = [];
+        for (const msg of config.starter_messages) {
+            starterMessages.push({
+                role: msg.role,
+                content: msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key])
+            });
+        }
+        messages = [
+            ...starterMessages,
+            ...messages
+        ]
+        return messages;
+    };
+
+    // Function for sending the messages object to OpenAI and getting
+    // a language model response
+    const getChatResponse = async(messages = []) => {
+        // Predict the final token count by counting the tokens in the
+        // stringified messages object
+        let predictedTokenCount = countTokens(JSON.stringify(messages));
+        log(state, `Making OpenAI request of approx. ${predictedTokenCount} tokens`);
+        // Make requests until success or too many failures
+        // Returns an object with `success`, `data`, and `error` keys
+        const res = await (async() => {
+            const result = { success: false, data: null, error: null };
+            let tries = 0;
+            while (true) {
+                tries++;
+                try {
+                    // Make the request
+                    const completion = await openai.createChatCompletion({
+                        model: config.openai.model,
+                        messages: messages
+                    }, {
+                        timeout: 1000*config.request_timeout
+                    });
+                    // Update result and break
+                    result.success = true;
+                    result.data = completion.data;
+                    break;
+                } catch (error) {
+                    // Update result and attempt to try again
+                    result.error = error.response ? error.response.data.error.message : error.message;
+                    if (tries >= config.request_tries) {
+                        log(state, `Request failed (${tries})!`);
+                        break;
+                    }
+                    log(state, `Request failed (${tries})! Retrying...`);
+                }
+            }
+            return result;
+        })();
+        // Prepare gpt object
+        const gpt = { success: false, reply: null, error: null, count_tokens: 0 };
+        // If the response was successful, update the gpt object and sanitize the reply
+        if (res.success) {
+            gpt.success = true;
+            gpt.reply = res.data.choices[0].message.content
+                .replace(/([@])/g, '\\$1')
+                .replace(/```\n\n/g, '```')
+                .replace(/\n\n```/g, '\n```');
+            gpt.count_tokens = res.data.usage.total_tokens;
+            log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
+        // Otherwise, just update the gpt object with the error
+        } else {
+            gpt.error = res.error;
+        }
+        return gpt;
+    };
+
+    // If the author is a bot, do nothing
+    if (msg.author.bot && !config.discord.allowed_bots.includes(msg.author.bot.id)) return;
+
+    // If the message was sent in a guild but didn't
+    // ping the bot, do nothing
+    if (msg.guild && !msg.mentions.has(bot.user.id)) return;
+
+    // If the author is blocked, inform them and stop
     if (users.blocked.includes(msg.author.id)) {
         log(state, `User ${getUsernameString(msg.author)} is blocked`);
         return sendReply(`You're blocked from using me!`);
     }
+
+    // If the bot isn't public and the author isn't allowed,
+    // send the owner a message to allow or block them, then
+    // inform the author and stop
     const isOwner = msg.author.id === config.discord.owner_id;
     if (!config.public_usage && !users.allowed.includes(msg.author.id) && !isOwner) {
         log(state, `User ${getUsernameString(msg.author)} isn't allowed`);
@@ -181,10 +370,14 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             users: []
         });
     }
+
+    // If the author is already waiting on a response, inform them and stop
     if (userIsGenerating[msg.author.id]) {
         log(state, `User ${getUsernameString(msg.author)} tried to generate while generating`);
         return sendReply(`One message at a time!`);
     }
+
+    // Sanitize the input message and replace pings and channels with their names
     let input = msg.content;
     const pingMatches = msg.content.match(/<@(\d+)>/g) || [];
     const channelMatches = msg.content.match(/<#(\d+)>/g) || [];
@@ -198,177 +391,83 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         input = input.replace(match, '');
     }
     input = input.split(' ').filter(String).join(' ').trim();
+
+    // If the sanitized input is empty, inform the user and stop
     if (!input) {
         log(state, `User ${getUsernameString(msg.author)} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
     }
+
+    // If the sanitized input starts with a configured ignored prefix, stop
     for (const prefix of config.ignore_prefixes) {
         if (input.startsWith(prefix)) {
             return log(state, `User ${getUsernameString(msg.author)} used an ignored prefix`);
         }
     }
+
+    // If the sanitized input's token count exceeds the configured max,
+    // inform the user and stop
     if (countTokens(input) > config.max_input_tokens) {
         log(state, `User ${getUsernameString(msg.author)} sent a message that exceeded config.max_input_tokens`);
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
+
     log(state, `User ${getUsernameString(msg.author)} sent a valid message`);
-    const getMessagesObject = async(msg) => {
-        let messages = [
-            { role: 'user', content: input }
-        ];
-        if (msg.type == Discord.MessageType.Reply) {
-            const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
-            const msgType = (srcMsg.author.id == bot.user.id) ? 'assistant' : 'user';
-            if (msgType == 'assistant') {
-                const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? AND output_msg_id = ?`).get(msg.channel.id, srcMsg.id);
-                if (lastMsg) {
-                    messages = [
-                        { role: 'user', content: lastMsg.input },
-                        { role: 'assistant', content: lastMsg.output },
-                        ...messages
-                    ];
-                    log(state, `Using replied-to saved input and output as context`);
-                } else {
-                    messages.unshift({ role: msgType, content: srcMsg.content });
-                    log(state, `Using replied-to user message as context (couldn't find saved message)`);
-                }
-            } else {
-                messages.unshift({ role: msgType, content: srcMsg.content });
-                log(state, `Using replied-to user message as context`);
-            }
-        } else if (!msg.guild) {
-            const lastMsg = db.prepare(`SELECT * FROM messages WHERE channel_id = ? ORDER BY time_created DESC LIMIT 1`).get(msg.channel.id);
-            if (lastMsg) {
-                messages = [
-                    { role: 'user', content: lastMsg.input },
-                    { role: 'assistant', content: lastMsg.output },
-                    ...messages
-                ];
-                log(state, `Using previous input and output as context`);
-            }
-        }
-        const authorGuildUser = msg.guild ? msg.guild.members.cache.get(msg.author.id) : null;
-        const placeholders = {
-            user_username: msg.author.username,
-            user_nickname: await getUserDisplayName(authorGuildUser?.nickname ? authorGuildUser : msg.author),
-            bot_username: bot.user.username,
-            time: dayjs().format('h:mm A'),
-            date: dayjs().format('dddd, MMMM D, YYYY'),
-            timezone: dayjs().format('zzz')
-        };
-        const starterMessages = [];
-        for (const msg of config.starter_messages) {
-            starterMessages.push({
-                role: msg.role,
-                content: msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key])
-            });
-        }
-        messages = [
-            ...starterMessages,
-            ...messages
-        ]
-        return messages;
-    };
-    const getChatResponse = async(messages = []) => {
-        let tentativeTokenCount = 0;
-        for (const message of messages) {
-            const tokenCount = countTokens(message.content);
-            tentativeTokenCount += tokenCount;
-        }
-        tentativeTokenCount = countTokens(JSON.stringify(messages));
-        try {
-            log(state, `Making OpenAI request of approx. ${tentativeTokenCount} tokens`);
-            const res = await (async() => {
-                let tries = 0;
-                let res = null;
-                while (true) {
-                    tries++;
-                    try {
-                        res = await axios.post('https://api.openai.com/v1/chat/completions', {
-                            model: config.openai.model,
-                            messages: messages,
-                            max_tokens: config.max_output_tokens
-                        }, {
-                            headers: { Authorization: `Bearer ${config.openai.secret}` },
-                            validateStatus: status => true,
-                            timeout: 1000*config.request_timeout
-                        });
-                        if (!res.data) {
-                            throw new Error(`No data received!`);
-                        }
-                        if (res.data.error) {
-                            throw new Error(`OpenAI responded with an error: ${JSON.stringify(res?.data?.error)}`);
-                        }
-                    } catch (error) {
-                        if (tries >= config.request_tries)
-                            throw new Error(error);
-                    }
-                    if ((res && !res?.error) || (tries >= config.request_tries))
-                        return res;
-                    log(state, `Request failed! Retrying...`);
-                }
-            })();
-            const gpt = {
-                reply: res?.data?.choices[0].message.content || null,
-                count_tokens: res?.data?.usage.total_tokens
-            };
-            if (gpt.reply) gpt.reply = gpt.reply
-                .replace(/([@])/g, '\\$1')
-                .replace(/```\n\n/g, '```')
-                .replace(/\n\n```/g, '\n```');
-            log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
-            return gpt;
-        } catch (error) {
-            log(state, `${error}`);
-            return { error: error };
-        }
-    };
+
+    // Periodically send typing indicator
     await sendTyping();
-    const db = sqlite3('./main.db');
     const typingInterval = setInterval(sendTyping, 3000);
+    // Open the database
+    const db = sqlite3('./main.db');
     try {
         userIsGenerating[msg.author.id] = true;
+        // If this is an existing reply, delete the old interaction
         if (existingReply) {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
         }
+        // Get the messages object and get a response from OpenAI
         const messages = await getMessagesObject(msg);
         const gpt = await getChatResponse(messages);
-        if (!gpt || gpt?.error || !gpt?.reply) {
+        clearInterval(typingInterval);
+        // Throw an error if the request was unsuccessful
+        if (!gpt.success) {
             throw new Error(`Request failed: ${gpt.error}`);
         }
+        // Append the response to the messages object and add this
+        // interaction to the messages database
         messages.push({ role: 'assistant', content: gpt.reply });
         db.prepare(`INSERT INTO messages (time_created, user_id, channel_id, input_msg_id, input, output, messages, count_tokens) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(Date.now(), msg.author.id, msg.channel.id, msg.id, input, gpt.reply, JSON.stringify(messages), gpt.count_tokens);
-        const month = dayjs().format('YYYY-MM');
         // Initialize stats object
+        const month = dayjs().format('YYYY-MM');
         stats.users[msg.author.id] = stats.users[msg.author.id] || {
             interactions: 0,
             tokens: 0
         };
-        if (!stats.months) stats.months = {};
+        // Create stats object for this month if it doesn't exist
         if (!stats.months[month]) stats.months[month] = {
             totalInteractions: 0,
             totalTokens: 0,
             users: {}
         };
+        // Create stats object for this user this month if it doesn't exist
         if (!stats.months[month].users[msg.author.id]) {
             stats.months[month].users[msg.author.id] = {
                 interactions: 0,
                 tokens: 0
             }
         }
-        // Update all-time stats
-        stats.totalInteractions++;
-        stats.totalTokens += gpt.count_tokens;
-        stats.users[msg.author.id].interactions++;
-        stats.users[msg.author.id].tokens += gpt.count_tokens;
-        // Update monthly stats
-        stats.months[month].totalInteractions++;
-        stats.months[month].totalTokens += gpt.count_tokens;
-        stats.months[month].users[msg.author.id].interactions++;
-        stats.months[month].users[msg.author.id].tokens += gpt.count_tokens;
+        // Update all-time and monthly stats
+        const updateStats = obj => {
+            obj.totalInteractions++;
+            obj.totalTokens += gpt.count_tokens;
+            obj.users[msg.author.id].interactions++;
+            obj.users[msg.author.id].tokens += gpt.count_tokens;
+        }
+        updateStats(stats);
+        updateStats(stats.months[month]);
         writeStats();
-        clearInterval(typingInterval);
-        let outputMsg = await sendReply(gpt.reply, {
+        // Send the response
+        const output = await sendReply(gpt.reply, {
             users: [], roles: [], everyone: false
         }, config.show_regenerate_button ? [
             new Discord.ActionRowBuilder()
@@ -380,10 +479,10 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 ])
         ] : null);
         updateStatus();
-        if (outputMsg && outputMsg.id) {
-            db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(outputMsg.id, msg.id);
-        }
+        // Update the database with the output message ID
+        db.prepare(`UPDATE messages SET output_msg_id = ? WHERE input_msg_id = ?`).run(output.id, msg.id);
     } catch (error) {
+        // Inform the user of the error
         log(state, `Failed to send message!`, error);
         try {
             await sendReply(`Sorry, something went wrong while replying!\n\`\`\`${error}\`\`\``, null, [
@@ -398,12 +497,15 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         } catch (error) {
             log(state, `Failed to send error message`, error);
         }
-        clearInterval(typingInterval);
     }
     db.close();
     userIsGenerating[msg.author.id] = false;
     log(state, `Interaction took ${((Date.now()-now)/1000).toFixed(2)} seconds`);
 });
+
+// Handle message deletion
+// If the input message is deleted, delete the output message from
+// Discord and the interaction from the database
 bot.on('messageDelete', async msg => {
     if (msg.author.bot) return;
     const db = sqlite3('./main.db');
@@ -416,17 +518,26 @@ bot.on('messageDelete', async msg => {
     db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(msg.id);
     db.close();
 });
+
+// Handle message edits
+// If the input message is edited, regenerate the output message
+// using the new input
 bot.on('messageUpdate', async(msgOld, msg) => {
     if (msg.author.bot) return;
     const db = sqlite3('./main.db');
     const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ?`).get(msg.id);
+    db.close();
     if (!entry) return;
     const response = await msg.channel.messages.fetch(entry.output_msg_id);
     if (!response) return;
     log(`Message ${msg.id} was edited`);
-    await response.edit('...');
+    await response.edit({
+        content: msg.content,
+        attachments: []
+    });
+    // Emit a messageCreate event on the bot, passing it the new message along with
+    // the saved interaction so it can be updated
     bot.emit('messageCreate', msg, response);
-    db.close();
 });
 
 /**
@@ -434,12 +545,18 @@ bot.on('messageUpdate', async(msgOld, msg) => {
  * @param {Discord.CommandInteraction} interaction
  */
 const commands = {
-    /** @type {CommandHandler} */
+    /** 
+     * Sends the user the contents of `./command.help.md`
+     * @type {CommandHandler}
+    */
     help: async(interaction) => {
-        await interaction.reply(`I'm a bot who shares the same language model as ChatGPT! Send me a DM or ping me in a server and I'll be happy to assist you to the best of my abilities. In DMs, I'm able to remember your previous message and my response to it, and in DMs and servers, you can reply to any message (mine or someone else's) and I'll use it as context.\n\nNote that we save your interactions (inputs and outputs) to a database to provide conversation history. You can use \`/purge\` to remove all of that content at any time. OpenAI may also hang on to your inputs for a while, so see [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.\n\nInterested in the innerworkings or want to run me for yourself? [Read my source code on GitHub](<https://github.com/CyberGen49/discord-chatgpt>)!`);
+        await interaction.reply(fs.readFileSync('./command.help.md', 'utf8'));
         log(`${getUsernameString(interaction.user)} used /help`);
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Compiles stats into pretty embeds
+     * @type {CommandHandler}
+    */
     stats: async(interaction) => {
         const user = interaction.options.getUser('user') || interaction.user;
         const totalInteractions = stats.totalInteractions || 0;
@@ -510,7 +627,10 @@ const commands = {
         });
         log(`${getUsernameString(interaction.user)} got stats for ${getUsernameString(user)}`);
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Purges all of the user's interactions from the database
+     * @type {CommandHandler}
+    */
     purge: async(interaction) => {
         await interaction.deferReply({ ephemeral: true });
         const db = sqlite3('./main.db');
@@ -522,7 +642,10 @@ const commands = {
         log(`${getUsernameString(interaction.user)} purged their saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Purges the entire database. Only the bot owner can do this.
+     * @type {CommandHandler}
+    */
     fullpurge: async(interaction) => {
         await interaction.deferReply({ ephemeral: true });
         if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
@@ -535,7 +658,10 @@ const commands = {
         log(`${getUsernameString(interaction.user)} purged all saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database.`);
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Sends the user an invite link for the bot
+     * @type {CommandHandler}
+    */
     invite: async(interaction) => {
         log(`${getUsernameString(interaction.user)} get the invite link`);
         interaction.reply({
@@ -543,7 +669,10 @@ const commands = {
             ephemeral: true
         });
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Allows for managing allowed and blocked users
+     * @type {CommandHandler}
+    */
     users: async(interaction) => {
         await interaction.deferReply({ ephemeral: true });
         if (interaction.user.id !== config.discord.owner_id) return interaction.editReply(`Only the bot owner can use this command.`);
@@ -554,6 +683,7 @@ const commands = {
                 users.blocked.splice(users.blocked.indexOf(id), 1);
         }
         const subCommand = {
+            // Allows a user to use the bot
             allow: () => {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
@@ -565,6 +695,7 @@ const commands = {
                     user.send({ content: `You've been added to the allow list and can now talk to me!` });
                 } catch(e) {}
             },
+            // Blocks a user from using the bot
             block: () => {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
@@ -576,6 +707,9 @@ const commands = {
                     user.send({ content: `You've been blocked from talking to me.` });
                 } catch(e) {}
             },
+            // Removes a user from the allow/block list
+            // `config.public_usage` will determine if they can
+            // use the bot or not
             unset: () => {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
@@ -583,6 +717,7 @@ const commands = {
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is no longer allowed or blocked from using the bot. The \`config.public_usage\` option will now apply.`);
             },
+            // Wipes the allow/block list
             wipe: () => {
                 users.allowed = [];
                 users.blocked = [];
@@ -590,6 +725,7 @@ const commands = {
                 writeUsers();
                 interaction.editReply(`The list of allowed and blocked users has been wiped. The \`config.public_usage\` option will now apply to all users.`);
             },
+            // Lists all users on the allow/block list
             list: () => {
                 interaction.editReply({
                     embeds: [
@@ -623,7 +759,10 @@ const commands = {
         };
         subCommand[interaction.options.getSubcommand()]();
     },
-    /** @type {CommandHandler} */
+    /** 
+     * Allows the bot owner to use DALL-E
+     * @type {CommandHandler}
+    */
     dalle: async(interaction) => {
         if (interaction.user.id !== config.discord.owner_id)
             return interaction.reply({
@@ -684,7 +823,11 @@ const commands = {
         });
     },
 };
+
+// Handle interactions
 bot.on('interactionCreate', async interaction => {
+    // If this interaction is a command, run the
+    // corresponding command function
     if (interaction.isChatInputCommand()) {
         try {
             await commands[interaction.commandName](interaction);
@@ -692,10 +835,13 @@ bot.on('interactionCreate', async interaction => {
             log(`Error while handling slash command:`, error);
         }
     }
+    // If this interaction is a button click, handle it
     if (interaction.isButton()) {
         try {
             const params = interaction.customId.split('.');
+            // User-oriented actions
             if (params[0] == 'user') {
+                // Allows the specified user
                 if (params[1] == 'allow') {
                     const id = params[2];
                     const user = await bot.users.fetch(id);
@@ -710,6 +856,7 @@ bot.on('interactionCreate', async interaction => {
                         });
                     } catch(e) {}
                 }
+                // Blocks the specified user
                 if (params[1] == 'block') {
                     const id = params[2];
                     const user = await bot.users.fetch(id);
@@ -727,7 +874,9 @@ bot.on('interactionCreate', async interaction => {
                     } catch(e) {}
                 }
             }
+            // Message-oriented actions
             if (params[0] == 'msg') {
+                // Regenerates the specified message
                 if (params[1] == 'generate') {
                     const id = params[2];
                     if (userIsGenerating[interaction.user.id]) {
@@ -753,8 +902,10 @@ bot.on('interactionCreate', async interaction => {
             log(`Error while handling button:`, error);
         }
     }
+    // If this interaction is a context menu command, handle it
     if (interaction.isContextMenuCommand()) {
         const contextMenuCommand = {
+            // Regenerates the selected message
             'Regenerate response': async() => {
                 if (bot.user.id !== interaction.targetMessage.author.id) {
                     return interaction.reply({ content: `This isn't one of my messages!`, ephemeral: true });
@@ -779,6 +930,7 @@ bot.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: `On it!`, ephemeral: true });
                 bot.emit('messageCreate', inputMsg, interaction.targetMessage);
             },
+            // Dumps the selected interaction's saved data
             'Dump interaction': async() => {
                 const db = sqlite3('./main.db');
                 const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ? OR output_msg_id = ?`).get(interaction.targetMessage.id, interaction.targetMessage.id);
@@ -797,6 +949,7 @@ bot.on('interactionCreate', async interaction => {
                 });
                 fs.rmSync(file);
             },
+            // Sends the user a link to view the selected conversation online
             'Get conversation link': async() => {
                 if (!config.http_server.enabled) {
                     return interaction.reply({ content: `The conversation viewer is unavailable!`, ephemeral: true });
@@ -818,8 +971,8 @@ bot.on('interactionCreate', async interaction => {
     }
 });
 
-bot.login(config.discord.token);
-
+// Periodically check for old messages and delete them
+// according to configured settings
 setInterval(() => {
     if (config.delete_message_days >= 0) return;
     const db = sqlite3('./main.db');
@@ -832,18 +985,23 @@ setInterval(() => {
         log(`Deleted ${messages.length} old messages`);
 }, (60*60*1000));
 
+// Handle the HTTP server if it's enabled
 if (config.http_server.enabled) {
     const srv = express();
+    // Base route for logging
     srv.use((req, res, next) => {
         res.on('finish', () => {
             log(clc.greenBright(`[${req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress}]`), clc.white(req.method, res.statusCode), req.url);
         });
         next();
     });
+    // Static assets
     srv.use(express.static(`${__dirname}/web`));
+    // Redirect to the generated bot invite URL
     srv.get('/invite', (req, res) => {
         res.redirect(inviteUrl);
     });
+    // Handle the conversation viewer
     srv.get('/convo/:id', async(req, res) => {
         const db = sqlite3('./main.db');
         const entry = db.prepare(`SELECT * FROM messages WHERE input_msg_id = ? OR output_msg_id = ?`).get(req.params.id, req.params.id);
@@ -874,6 +1032,7 @@ if (config.http_server.enabled) {
             messages: messages,
         });
     });
+    // Catch-all, redirect to the GitHub repo
     srv.use((req, res) => {
         res.redirect(`https://github.com/CyberGen49/discord-chatgpt`);
     });
