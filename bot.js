@@ -122,7 +122,9 @@ const updateStatus = () => {
         tokens_total: stats.totalTokens.toLocaleString(),
         tokens_month: (statsMonth.totalTokens || 0).toLocaleString(),
         price_total: (stats.totalTokens * config.usd_per_token).toFixed(2),
-        price_month: ((statsMonth.totalTokens || 0) * config.usd_per_token).toFixed(2)
+        price_month: ((statsMonth.totalTokens || 0) * config.usd_per_token).toFixed(2),
+        interactions_total: stats.totalInteractions.toLocaleString(),
+        interactions_month: (statsMonth.totalInteractions || 0).toLocaleString(),
     };
     const text = config.discord.status.text.replace(/\{(\w+)\}/g, (match, key) => placeholders[key]);
     bot.user.setActivity(text, {

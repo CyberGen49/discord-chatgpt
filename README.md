@@ -1,6 +1,6 @@
 
 # ChatGPT Discord Bot
-A Discord bot that allows users to interact with OpenAI's `gpt-3.5-turbo` large language model, which is the same one used for ChatGPT.
+A Discord bot that allows users to interact with OpenAI's large language models.
 
 Check out [the changelog](/Changelog.md) to see what's changed!
 

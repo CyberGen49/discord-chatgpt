@@ -5,6 +5,7 @@ This file exists because sometimes I wait to commit my changes until I've done a
 - Use the `openai` module for requests
 - Add tons of comments!
 - Refactoring
+- Add total and monthly interactions placeholders for the bot's status
 
 ## 2023-07-14
 - Refactoring

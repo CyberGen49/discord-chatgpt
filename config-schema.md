@@ -38,6 +38,8 @@ Placeholders:
 * `{tokens_month}`: The number of tokens used this month.
 * `{price_total}`: The total amount of money spent, in USD.
 * `{price_month}`: The amount of money spent this month, in USD.
+* `{interactions_total}`: The total number of interactions so far.
+* `{interactions_month}`: The number of interactions this month.
 
 ### string[] `discord.allowed_bots`
 A list of bot user IDs that are allowed to interact with the bot. This can be useful for automation, but make sure to avoid any recursion!
