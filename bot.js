@@ -534,7 +534,7 @@ bot.on('messageUpdate', async(msgOld, msg) => {
     if (!response) return;
     log(`Message ${msg.id} was edited`);
     await response.edit({
-        content: msg.content,
+        content: '...',
         attachments: []
     });
     // Emit a messageCreate event on the bot, passing it the new message along with
