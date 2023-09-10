@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversation with <%= user.global_name || user.username %></title>
+    <title>Conversation with <%= user.globalName || user.username %></title>
     <meta property="og:site_name" content="<%= bot.username %> Conversation Viewer">
-    <meta property="og:title" content="Conversation with <%= user.global_name || user.username %>">
-    <link rel="icon" href="<%= bot.avatar_url %>">
+    <meta property="og:title" content="Conversation with <%= user.globalName || user.username %>">
+    <link rel="icon" href="<%= bot.avatarUrl %>">
     <link defer rel="stylesheet" href="https://src.simplecyber.org/v2/base.css">
     <link defer rel="stylesheet" href="https://src.simplecyber.org/v2/themes.css">
     <link defer rel="stylesheet" href="/convo/viewer.css">
@@ -24,12 +24,12 @@
             <% for (const msg of messages) { %>
                 <div class="msg <%= msg.role %> row gap-15">
                     <div class="flex-no-shrink">
-                        <img class="avatar user" src="<%= user.avatar_url %>">
-                        <img class="avatar bot" src="<%= bot.avatar_url %>">
+                        <img class="avatar user" src="<%= user.avatarUrl %>">
+                        <img class="avatar bot" src="<%= bot.avatarUrl %>">
                     </div>
                     <div class="col gap-5 flex-grow" style="min-width: 0px">
                         <div>
-                            <span class="name user"><%= user.global_name || user.username %></span>
+                            <span class="name user"><%= user.globalName || user.username %></span>
                             <span class="name bot"><%= bot.username %></span>
                         </div>
                         <div class="content">

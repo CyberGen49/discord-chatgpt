@@ -61,45 +61,16 @@ const writeUsers = () => {
 // Shortcut function for counting the number of tokens in a string
 const countTokens = text => tokens.encode(text).length;
 
-// Function for fetching raw Discord userdata from the API
-// Uses the discordusers.simplecyber.org API as a proxy
-// Visit that site and click the "API" button for more details
-const rawUserCache = {};
-const fetchRawUser = async id => {
-    if (rawUserCache[id] && (Date.now()-rawUserCache[id].time) < (1000*60*15))
-        return rawUserCache[id];
-    const res = await axios.get(`https://discordusers.simplecyber.org/u/${id}/json`);
-    if (res.data) {
-        res.data.time = Date.now();
-        rawUserCache[id] = res.data;
-        return res.data;
-    }
-};
-
-// Function for getting a user's username as a string
-// This function will only add the user's discriminator if they have one
-// This is a workaround while Discord rolls out the new username system
-const getUsernameString = user => {
-    if (user.discriminator == '0')
-        return user.username;
-    else
-        return `${user.username}#${user.discriminator}`;
-};
-
 // Function for getting the user's display name
 // First we check for a nickname, then for a global name, then for a username
-const getUserDisplayName = async user => {
-    if (user.nickname)
-        return user.nickname;
-    else {
-        try {
-            // Discord.js doesn't return the user's global name,
-            // so we'll use discordusers.simplecyber.org to fetch
-            // that data instead.
-            const rawUser = await fetchRawUser(user.id);
-            if (rawUser.global_name) return rawUser.global_name;
-        } catch (error) {}
-        return user.username;
+const getUserDisplayName = async user =>
+    user.nickname || user.globalName || user.username;
+
+const getAvatarUrl = user => {
+    if (user.avatar) {
+        return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${(user.avatar.match(/^a_/)) ? 'gif' : 'png'}?size=512`;
+    } else {
+        return `https://cdn.discordapp.com/embed/avatars/${user.discriminator % 5}.png`;
     }
 };
 
@@ -113,7 +84,6 @@ const bot = new Discord.Client({
     ],
     partials: [ Discord.Partials.Channel, Discord.Partials.Message ]
 });
-const botUser = fetchRawUser(config.discord.id);
 
 // Function for updating the bot's dynamic status
 const updateStatus = () => {
@@ -136,7 +106,7 @@ const updateStatus = () => {
 // Log into the bot
 let inviteUrl = '';
 bot.once('ready', () => {
-    log(`Logged in as ${getUsernameString(bot.user)}!`);
+    log(`Logged in as ${bot.user.tag}!`);
     inviteUrl = `https://discord.com/api/oauth2/authorize?client_id=${bot.user.id}&permissions=2048&scope=bot`;
     log(`Invite URL: ${inviteUrl}`);
     updateStatus();
@@ -342,7 +312,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
 
     // If the author is blocked, inform them and stop
     if (users.blocked.includes(msg.author.id)) {
-        log(state, `User ${getUsernameString(msg.author)} is blocked`);
+        log(state, `User ${msg.author.tag} is blocked`);
         return sendReply(`You're blocked from using me!`);
     }
 
@@ -351,7 +321,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     // inform the author and stop
     const isOwner = msg.author.id === config.discord.owner_id;
     if (!config.public_usage && !users.allowed.includes(msg.author.id) && !isOwner) {
-        log(state, `User ${getUsernameString(msg.author)} isn't allowed`);
+        log(state, `User ${msg.author.tag} isn't allowed`);
         const owner = await bot.users.fetch(config.discord.owner_id);
         await owner.send({
             content: `<@${msg.author.id}> tried using the bot but they aren't allowed to.`,
@@ -375,7 +345,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
 
     // If the author is already waiting on a response, inform them and stop
     if (userIsGenerating[msg.author.id]) {
-        log(state, `User ${getUsernameString(msg.author)} tried to generate while generating`);
+        log(state, `User ${msg.author.tag} tried to generate while generating`);
         return sendReply(`One message at a time!`);
     }
 
@@ -396,25 +366,25 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
 
     // If the sanitized input is empty, inform the user and stop
     if (!input) {
-        log(state, `User ${getUsernameString(msg.author)} made an empty ping`);
+        log(state, `User ${msg.author.tag} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
     }
 
     // If the sanitized input starts with a configured ignored prefix, stop
     for (const prefix of config.ignore_prefixes) {
         if (input.startsWith(prefix)) {
-            return log(state, `User ${getUsernameString(msg.author)} used an ignored prefix`);
+            return log(state, `User ${msg.author.tag} used an ignored prefix`);
         }
     }
 
     // If the sanitized input's token count exceeds the configured max,
     // inform the user and stop
     if (countTokens(input) > config.max_input_tokens) {
-        log(state, `User ${getUsernameString(msg.author)} sent a message that exceeded config.max_input_tokens`);
+        log(state, `User ${msg.author.tag} sent a message that exceeded config.max_input_tokens`);
         return sendReply(`That message is too long for me to handle! Can you make it shorter?`);
     }
 
-    log(state, `User ${getUsernameString(msg.author)} sent a valid message`);
+    log(state, `User ${msg.author.tag} sent a valid message`);
 
     // Periodically send typing indicator
     await sendTyping();
@@ -553,7 +523,7 @@ const commands = {
     */
     help: async(interaction) => {
         await interaction.reply(fs.readFileSync('./command.help.md', 'utf8'));
-        log(`${getUsernameString(interaction.user)} used /help`);
+        log(`${interaction.user.tag} used /help`);
     },
     /** 
      * Compiles stats into pretty embeds
@@ -627,7 +597,7 @@ const commands = {
             embeds: embeds,
             ephemeral: true
         });
-        log(`${getUsernameString(interaction.user)} got stats for ${getUsernameString(user)}`);
+        log(`${interaction.user.tag} got stats for ${user.tag}`);
     },
     /** 
      * Purges all of the user's interactions from the database
@@ -641,7 +611,7 @@ const commands = {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
         }
         db.close();
-        log(`${getUsernameString(interaction.user)} purged their saved messages`);
+        log(`${interaction.user.tag} purged their saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database. You won't have conversation history until you interact again. This won't affect your statistics shown with **/stats**.\nNote that OpenAI may retain your interactions with the language model for some period of time. See [their privacy policy](<https://openai.com/policies/privacy-policy>) for more details.`);
     },
     /** 
@@ -657,7 +627,7 @@ const commands = {
             db.prepare(`DELETE FROM messages WHERE input_msg_id = ?`).run(message.input_msg_id);
         }
         db.close();
-        log(`${getUsernameString(interaction.user)} purged all saved messages`);
+        log(`${interaction.user.tag} purged all saved messages`);
         interaction.editReply(`Purged ${messages.length} interactions from the database.`);
     },
     /** 
@@ -665,7 +635,7 @@ const commands = {
      * @type {CommandHandler}
     */
     invite: async(interaction) => {
-        log(`${getUsernameString(interaction.user)} get the invite link`);
+        log(`${interaction.user.tag} get the invite link`);
         interaction.reply({
             content: inviteUrl,
             ephemeral: true
@@ -690,7 +660,7 @@ const commands = {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
                 users.allowed.push(user.id);
-                log(`${getUsernameString(interaction.user)} allowed ${getUsernameString(user)} to use the bot`);
+                log(`${interaction.user.tag} allowed ${user.tag} to use the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> can now use the bot!`);
                 try {
@@ -702,7 +672,7 @@ const commands = {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
                 users.blocked.push(user.id);
-                log(`${getUsernameString(interaction.user)} blocked ${getUsernameString(user)} from using the bot`);
+                log(`${interaction.user.tag} blocked ${user.tag} from using the bot`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is now blocked from using the bot.`);
                 try {
@@ -715,7 +685,7 @@ const commands = {
             unset: () => {
                 const user = interaction.options.getUser('user');
                 unsetUser(user.id);
-                log(`${getUsernameString(interaction.user)} unset ${getUsernameString(user)}'s bot usage`);
+                log(`${interaction.user.tag} unset ${user.tag}'s bot usage`);
                 writeUsers();
                 interaction.editReply(`<@${user.id}> is no longer allowed or blocked from using the bot. The \`config.public_usage\` option will now apply.`);
             },
@@ -723,7 +693,7 @@ const commands = {
             wipe: () => {
                 users.allowed = [];
                 users.blocked = [];
-                log(`${getUsernameString(interaction.user)} wiped the allow/block list`);
+                log(`${interaction.user.tag} wiped the allow/block list`);
                 writeUsers();
                 interaction.editReply(`The list of allowed and blocked users has been wiped. The \`config.public_usage\` option will now apply to all users.`);
             },
@@ -771,7 +741,7 @@ const commands = {
                 content: `For now, only the bot owner can use this command.`,
                 ephemeral: true
             });
-        log(`User ${getUsernameString(interaction.user)} used the DALL-E command`)
+        log(`User ${interaction.user.tag} used the DALL-E command`)
         await interaction.deferReply();
         const generateImage = async(prompt) => {
             try {
@@ -848,7 +818,7 @@ bot.on('interactionCreate', async interaction => {
                     const id = params[2];
                     const user = await bot.users.fetch(id);
                     users.allowed.push(id);
-                    log(`User ${getUsernameString(user)} was allowed to use the bot (via button)`);
+                    log(`User ${user.tag} was allowed to use the bot (via button)`);
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been granted!` });
@@ -865,7 +835,7 @@ bot.on('interactionCreate', async interaction => {
                     if (users.allowed.includes(id))
                         users.allowed.splice(users.allowed.indexOf(id), 1);
                     users.blocked.push(id);
-                    log(`User ${getUsernameString(user)} was blocked from using the bot (via button)`);
+                    log(`User ${user.tag} was blocked from using the bot (via button)`);
                     writeUsers();
                     try {
                         user.send({ content: `Your request to talk has been denied. Future requests will be ignored.` });
@@ -888,7 +858,7 @@ bot.on('interactionCreate', async interaction => {
                     if (!msg) {
                         return interaction.reply({ content: `The source message no longer exists!`, ephemeral: true });
                     }
-                    log(`User ${getUsernameString(interaction.user)} requested message ${interaction.message.id} to be regenerated`);
+                    log(`User ${interaction.user.tag} requested message ${interaction.message.id} to be regenerated`);
                     await interaction.reply({
                         content: `On it!`,
                         ephemeral: true
@@ -927,7 +897,7 @@ bot.on('interactionCreate', async interaction => {
                     return interaction.reply({ content: `The input message no longer exists!`, ephemeral: true });
                 }
                 db.close();
-                log(`User ${getUsernameString(interaction.user)} requested for message ${interaction.targetMessage.id} be regenerated`);
+                log(`User ${interaction.user.tag} requested for message ${interaction.targetMessage.id} be regenerated`);
                 await interaction.targetMessage.edit('...');
                 await interaction.reply({ content: `On it!`, ephemeral: true });
                 bot.emit('messageCreate', inputMsg, interaction.targetMessage);
@@ -940,7 +910,7 @@ bot.on('interactionCreate', async interaction => {
                 if (!entry) {
                     return interaction.reply({ content: `This message isn't in the database!`, ephemeral: true });
                 }
-                log(`User ${getUsernameString(interaction.user)} requested a dump of input/output message ${interaction.targetMessage.id}`);
+                log(`User ${interaction.user.tag} requested a dump of input/output message ${interaction.targetMessage.id}`);
                 entry.messages = JSON.parse(entry.messages);
                 entry.cost = entry.count_tokens*config.usd_per_token;
                 const file = `${interaction.targetMessage.id}.json`;
@@ -1028,11 +998,14 @@ if (config.http_server.enabled) {
                 })
             });
         }
-        res.render(`${__dirname}/web/convo/viewer.ejs`, {
-            bot: await botUser,
-            user: await fetchRawUser(entry.user_id),
-            messages: messages,
-        });
+        const data = {
+            bot: bot.user,
+            user: bot.users.cache.get(entry.user_id) || await bot.users.fetch(entry.user_id),
+            messages: messages
+        };
+        data.bot.avatarUrl = getAvatarUrl(data.bot);
+        data.user.avatarUrl = getAvatarUrl(data.user);
+        res.render(`${__dirname}/web/convo/viewer.ejs`, data);
     });
     // Catch-all, redirect to the GitHub repo
     srv.use((req, res) => {
