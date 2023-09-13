@@ -354,6 +354,11 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     const pingMatches = msg.content.match(/<@(\d+)>/g) || [];
     const channelMatches = msg.content.match(/<#(\d+)>/g) || [];
     for (const match of pingMatches) {
+        // Remove pings from bot user itself
+        if (match.includes(bot.user.id)) {
+            input = input.replace(match, '');
+            continue;
+        }
         const id = match.replace(/\D/g, '');
         const user = msg.guild ? msg.guild.members.cache.get(id).user : bot.users.cache.get(id);
         const userName = await getUserDisplayName(user);
