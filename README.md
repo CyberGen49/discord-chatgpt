@@ -1,6 +1,6 @@
 
-# ChatGPT Discord Bot
-A Discord bot that allows users to interact with OpenAI's large language models.
+# discord-chatgpt
+A Discord bot that allows users to interact with OpenAI's GPT large language and DALL-E image generation models.
 
 Check out [the changelog](/Changelog.md) to see what's changed!
 
