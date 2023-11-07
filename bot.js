@@ -129,6 +129,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     channelLastActive[msg.channel.id] = now;
 
     // Function for sending a typing indicator
+    // Only do this if we're sending a new message
     const sendTyping = async() => {
         if (!existingReply)
             await msg.channel.sendTyping();
@@ -156,12 +157,12 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             // Determine the method to send with
             // If there's been activity since this message, reply to it
             // If this is an existing reply, edit it
-            let replyMethod = data => msg.channel.send(data);
+            let send = data => msg.channel.send(data);
             if (now !== channelLastActive[msg.channel.id]) {
-                replyMethod = data => msg.reply(data);
+                send = data => msg.reply(data);
             }
             if (existingReply) {
-                replyMethod = data => existingReply.edit(data);
+                send = data => existingReply.edit(data);
             }
             // Build the response object
             const data = {
@@ -171,7 +172,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
             };
             if (allowedMentions) data.allowedMentions = allowedMentions;
             // Send the message and delete the text file if necessary
-            const newMsg = await replyMethod(data);
+            const newMsg = await send(data);
             log(state, `Response message ${newMsg.id} sent`);
             if (shouldSendTextFile)
                 fs.rmSync(textFileName);
@@ -185,8 +186,21 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     // Function for building the OpenAI messages object with context
     const getMessagesObject = async(msg) => {
         let messages = [
-            { role: 'user', content: input }
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: input }
+                ]
+            }
         ];
+        // Add image URLs
+        // These shouldn't mean anything unless we're using a vision model
+        for (const url of imageUrls) {
+            messages[0].content.push({
+                type: 'image_url',
+                image_url: url
+            });
+        }
         // If the message was a reply, use the replied-to message as context
         if (msg.type == Discord.MessageType.Reply) {
             const srcMsg = msg.channel.messages.cache.get(msg.reference.messageId);
@@ -237,6 +251,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         for (const msg of config.starter_messages) {
             starterMessages.push({
                 role: msg.role,
+                // Replace placeholders in the message
                 content: msg.content.replace(/\{(\w+)\}/g, (match, key) => placeholders[key])
             });
         }
@@ -249,7 +264,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
 
     // Function for sending the messages object to OpenAI and getting
     // a language model response
-    const getChatResponse = async(messages = []) => {
+    const getModelResponse = async(messages = []) => {
         // Predict the final token count by counting the tokens in the
         // stringified messages object
         let predictedTokenCount = countTokens(JSON.stringify(messages));
@@ -265,13 +280,15 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                     // Make the request
                     const completion = await openai.createChatCompletion({
                         model: config.openai.model,
-                        messages: messages
+                        messages: messages,
+                        max_tokens: config.max_input_tokens+config.max_output_tokens,
                     }, {
                         timeout: 1000*config.request_timeout
                     });
                     // Update result and break
                     result.success = true;
                     result.data = completion.data;
+                    console.log(JSON.stringify(completion.data, null, 2))
                     break;
                 } catch (error) {
                     // Update result and attempt to try again
@@ -295,6 +312,10 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                 .replace(/```\n\n/g, '```')
                 .replace(/\n\n```/g, '\n```');
             gpt.count_tokens = res.data.usage.total_tokens;
+            gpt.tokens = {
+                input: res.data.usage.prompt,
+                output: res.data.usage.response
+            };
             log(state, `Received OpenAI response of ${gpt.count_tokens} tokens`);
         // Otherwise, just update the gpt object with the error
         } else {
@@ -309,6 +330,9 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     // If the message was sent in a guild but didn't
     // ping the bot, do nothing
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
+
+    // If the message isn't a normal message, do nothing
+    if (msg.type != Discord.MessageType.Default) return;
 
     // If the author is blocked, inform them and stop
     if (users.blocked.includes(msg.author.id)) {
@@ -364,8 +388,15 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     }
     input = input.split(' ').filter(String).join(' ').trim();
 
+    // Get message image URLs
+    let imageUrls = [];
+    for (const attachment of msg.attachments.values()) {
+        if (attachment.contentType.startsWith('image/'))
+            imageUrls.push(attachment.url);
+    }
+
     // If the sanitized input is empty, inform the user and stop
-    if (!input) {
+    if (!input && imageUrls.length == 0) {
         log(state, `User ${msg.author.tag} made an empty ping`);
         return sendReply(`Hi! Ping me again with a message and I'll try my best to answer it!`);
     }
@@ -399,7 +430,7 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
         }
         // Get the messages object and get a response from OpenAI
         const messages = await getMessagesObject(msg);
-        const gpt = await getChatResponse(messages);
+        const gpt = await getModelResponse(messages);
         clearInterval(typingInterval);
         // Throw an error if the request was unsuccessful
         if (!gpt.success) {

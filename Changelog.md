@@ -1,6 +1,11 @@
 # discord-chatgpt Changelog
 This file exists because sometimes I wait to commit my changes until I've done a bulk of work, but I still want to log exactly what's changing. These logs are ordered by date.
 
+## 2023-11-06
+- Minor refactoring
+- Add image attachment capabilities for Vision models
+- Update default config to use `gpt-4-turbo` model
+
 ## 2023-09-09
 - Update modules
 - Stop using external API for getting user info
