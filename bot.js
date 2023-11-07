@@ -1016,7 +1016,11 @@ if (config.http_server.enabled) {
         const messages = [];
         for (const msg of entry.messages) {
             if (msg.role == 'system') continue;
-            let lines = msg.content.split('\n');
+            let lines;
+            if (typeof msg.content == 'string')
+                lines = msg.content.split('\n');
+            else
+                lines = msg.content[0].text.split('\n');
             let editedLines = [];
             for (const line of lines) {
                 editedLines.push(line.replace(/^```(.{12,})/, '```\n$1'));
