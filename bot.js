@@ -288,7 +288,6 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
                     // Update result and break
                     result.success = true;
                     result.data = completion.data;
-                    console.log(JSON.stringify(completion.data, null, 2))
                     break;
                 } catch (error) {
                     // Update result and attempt to try again
@@ -331,8 +330,9 @@ bot.on('messageCreate', async(msg, existingReply = null) => {
     // ping the bot, do nothing
     if (msg.guild && !msg.mentions.has(bot.user.id)) return;
 
-    // If the message isn't a normal message, do nothing
-    if (msg.type != Discord.MessageType.Default) return;
+    // If the message isn't a normal message or reply, do nothing
+    if (msg.type != Discord.MessageType.Default && msg.type != Discord.MessageType.Reply)
+        return;
 
     // If the author is blocked, inform them and stop
     if (users.blocked.includes(msg.author.id)) {
