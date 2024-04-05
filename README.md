@@ -1,3 +1,4 @@
+### This repo is deprecated. See [CyberGen49/discord-chatgpt-v2](https://github.com/CyberGen49/discord-chatgpt-v2) for the new version.
 
 # discord-chatgpt
 A Discord bot that allows users to interact with OpenAI's GPT large language and DALL-E image generation models.
